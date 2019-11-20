@@ -1,9 +1,9 @@
 import { FieldId, InputValue } from "./base-types";
 import { Validator } from "./validator-types";
-import { DeltaValues } from "./delta-types";
+import { DeltaValues, Delta } from "./delta-types";
 
 type FieldMatch = FieldId | FieldId[];
-type DeltaChecker = (values: DeltaValues) => boolean;
+type DeltaChecker = (values: DeltaValues) => Delta;
 
 interface ValueMatch {
   forbidden?: boolean;
@@ -28,4 +28,11 @@ interface MatchConfig {
   items: MatchConfigItem[];
 }
 
-export { FieldMatch, ValueMatch, DeltaMatch, MatchConfig, MatchConfigItem };
+export {
+  FieldMatch,
+  ValueMatch,
+  DeltaMatch,
+  MatchConfig,
+  MatchConfigItem,
+  DeltaChecker
+};

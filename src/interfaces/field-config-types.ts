@@ -1,18 +1,10 @@
-import { FieldId } from "./base-types";
+import { FieldId, DefaultValueType } from "./base-types";
 import { Sanitizer } from "./sanitizer-types";
 import { Validator } from "./validator-types";
 
 interface IFieldConfig {
   fieldId: FieldId;
-  type?:
-    | "array"
-    | "boolean"
-    | "date"
-    | "number"
-    | "object"
-    | "string"
-    | "symbol"
-    | string;
+  type?: DefaultValueType;
   sanitizer?: Sanitizer;
   validator?: Validator;
 }

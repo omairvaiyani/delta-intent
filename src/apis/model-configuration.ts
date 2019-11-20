@@ -2,13 +2,15 @@ import {
   ModelId,
   ModelState,
   IntentId,
-  InputValue
+  InputValue,
+  FieldId
 } from "../interfaces/base-types";
 import { IIntentConfig } from "../interfaces/intent-config-types";
 import { IFieldConfig } from "../interfaces/field-config-types";
 import { IModelConfig } from "../interfaces/model-config-types";
 import { FieldMatch, DeltaMatch } from "../interfaces/match-config-types";
-import { DeltaValues } from "../interfaces/delta-types";
+import { DeltaValues, FieldDiff, FieldDelta } from "../interfaces/delta-types";
+import { getDeltaChecker } from "../utils/delta-checkers";
 
 class ModelConfiguration implements IModelConfig {
   readonly modelId: ModelId;
@@ -59,8 +61,10 @@ class ModelConfiguration implements IModelConfig {
         })
       )
       .map(intentConfig => intentConfig.intentId);
+
     return {
-      intentIds
+      intentIds,
+      diffItems: []
     };
   }
 
@@ -118,28 +122,22 @@ class ModelConfiguration implements IModelConfig {
     fieldConfig: IFieldConfig,
     deltaMatch: DeltaMatch,
     deltaValues: DeltaValues
-  ): boolean {
+  ): FieldDelta {
     const { delta, existingState, modifiedState } = deltaMatch;
-    const { existingValue, modifiedValue } = deltaValues;
     const { type } = fieldConfig;
     if (delta) {
+      // TODO rename delta to deltaChecker
       if (typeof delta === "function") {
-        const didChange = delta(deltaValues);
-        if (typeof didChange !== "boolean") {
-          throw new Error("delta function should return a boolean");
-        }
-        return didChange;
+        return {
+          fieldId: fieldConfig.fieldId,
+          delta: delta(deltaValues)
+        };
       } else {
-        switch (type) {
-          case "string":
-          case "number":
-          case "boolean": {
-            return existingValue !== modifiedValue;
-          }
-          case "date": {
-            return existingValue instanceof Date;
-          }
-        }
+        const deltaChecker = getDeltaChecker(type);
+        return {
+          fieldId: fieldConfig.fieldId,
+          delta: deltaChecker(deltaValues)
+        };
       }
     }
   }
@@ -152,6 +150,7 @@ namespace ModelConfiguration {
   }
   export interface GetIntentionsResponse {
     intentIds: IntentId[];
+    fieldDeltaList: FieldDelta[];
     sanitisations?: Record<string, InputValue>;
   }
 }

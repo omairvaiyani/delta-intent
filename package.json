@@ -6,5 +6,8 @@
     "@hapi/joi": "^16.1.7",
     "ts-node": "^8.5.2",
     "typescript": "^3.7.2"
+  },
+  "dependencies": {
+    "jsondiffpatch": "^0.3.11"
   }
 }
