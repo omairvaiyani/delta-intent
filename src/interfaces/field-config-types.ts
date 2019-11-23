@@ -1,12 +1,15 @@
-import { FieldId, DefaultValueType } from "./base-types";
-import { Sanitizer } from "./sanitizer-types";
-import { Validator } from "./validator-types";
+import Joi from '@hapi/joi';
+import { FieldId, FieldId_S } from './base-types';
+import { BaseTypeConfig } from './custom-types';
 
-interface IFieldConfig {
+const IFieldConfig_S = Joi.object({
+  fieldId: FieldId_S.required(),
+  typeId: Joi.string().optional()
+});
+interface IFieldConfig extends BaseTypeConfig {
   fieldId: FieldId;
-  type?: DefaultValueType;
-  sanitizer?: Sanitizer;
-  validator?: Validator;
+  typeId?: string;
 }
 
+export { IFieldConfig_S }
 export { IFieldConfig };

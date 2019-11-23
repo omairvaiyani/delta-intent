@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "es2017",
-    "lib": ["es2019", "esnext.asynciterable", "esnext.array"],
+    "lib": ["es2019", "esnext.asynciterable", "esnext.array", "dom"],
     "module": "commonjs",
     "moduleResolution": "node",
     "experimentalDecorators": true,
@@ -12,8 +12,10 @@
     "noEmitOnError": false,
     "noImplicitAny": false,
     "allowJs": true,
-    "removeComments": true
+    "removeComments": true,
+    "outDir": "dist",
+    "declaration": true
   },
-  "include": [],
+  "include": ["src/**/*", "spec/unit/utils.spec.ts", "spec/unit/index.spec.ts"],
   "exclude": []
 }

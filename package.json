@@ -1,13 +1,37 @@
 {
-  "scripts": {
-    "debug-ts": "node --inspect -r ts-node/register/transpile-only index.ts"
+  "name": "delta-init",
+  "author": {
+    "name": "Omair Vaiyani",
+    "url": "https://github.com/omairvaiyani"
   },
+  "license": "MIT",
+  "scripts": {
+    "debug-ts": "node --inspect -r ts-node/register/transpile-only src/index.ts",
+    "build": "tsc --p tsconfig.json",
+    "test": "node -r ts-node/register/transpile-only ./node_modules/.bin/jasmine"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "devDependencies": {
-    "@hapi/joi": "^16.1.7",
-    "ts-node": "^8.5.2",
-    "typescript": "^3.7.2"
+    "@types/chai": "4.2.5",
+    "@types/jasmine": "3.5.0",
+    "@types/prettier": "1.18.4",
+    "@typescript-eslint/eslint-plugin": "2.8.0",
+    "@typescript-eslint/parser": "2.8.0",
+    "chai": "4.2.0",
+    "eslint": "6.6.0",
+    "eslint-config-airbnb-base": "14.0.0",
+    "eslint-config-prettier": "6.7.0",
+    "eslint-plugin-import": "2.18.2",
+    "jasmine": "3.5.0",
+    "jasmine-spec-reporter": "4.2.1",
+    "prettier": "1.19.1",
+    "ts-node": "8.5.2",
+    "typescript": "3.7.2"
   },
   "dependencies": {
-    "jsondiffpatch": "^0.3.11"
+    "@hapi/joi": "15.0.3",
+    "joi-extract-type": "15.0.2",
+    "jsondiffpatch": "0.3.11"
   }
 }

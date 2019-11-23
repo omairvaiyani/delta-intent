@@ -1,8 +1,7 @@
-import Joi from "@hapi/joi";
-import { InputValue } from "./base-types";
+import Joi from '@hapi/joi';
 
-type Validator = <T extends InputValue>(params: {
-  value: T;
-}) => boolean | Joi.AnySchema;
+const Validator_S = Joi.func().arity(1);
+type Validator = (params: { value: any }) => boolean;
 
+export { Validator_S };
 export { Validator };
