@@ -14,7 +14,7 @@ type BaseTestFixtureScenario = [IntentId[], GetIntentionsInput];
 type ExtendedTestFixtureScenario = [
   IntentId[],
   GetIntentionsInput,
-  { error?: IDeltaError }
+  { description?: string; error?: IDeltaError }
 ];
 type FixtureScenario = BaseTestFixtureScenario | ExtendedTestFixtureScenario;
 

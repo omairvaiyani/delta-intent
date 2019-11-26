@@ -1,15 +1,12 @@
 import Joi from '@hapi/joi';
 import { expect } from 'chai';
-import {
-  getIntentions,
-  GetIntentionsResponse_S
-} from '../../src/api/get-intentions';
+import { getIntentions } from '../../src/api/get-intentions';
 import { ModelConfiguration } from '../../src/api/model-configuration';
 import { getFieldConfig, getIntentConfig, getTypeConfig } from '../helpers';
 import { profile, purchaseOrder } from './fixtures';
 import { TypeConfigStore } from '../../src/api/type-config-store';
-import { ErrorCode } from '../../src/interfaces/error-types';
 import { safeId } from '../../src/utils/common';
+import { GetIntentionsResponse_S } from '../../src/interfaces/get-intentions-types';
 
 describe('getIntentions', function() {
   const getMCInput = () => ({
@@ -59,21 +56,34 @@ describe('getIntentions', function() {
   const fixtures = [profile, purchaseOrder];
   fixtures.forEach(fixture => {
     let typeConfigStore: TypeConfigStore;
-    if (fixture.typeConfigList) {
-      typeConfigStore = new TypeConfigStore({
-        typeConfigList: fixture.typeConfigList
+    let modelConfiguration: ModelConfiguration;
+
+    describe(`Fixture ${safeId(
+      fixture.modelConfiguration.modelId
+    )}`, function() {
+      beforeAll(function() {
+        try {
+          if (fixture.typeConfigList) {
+            typeConfigStore = new TypeConfigStore({
+              typeConfigList: fixture.typeConfigList
+            });
+          }
+
+          modelConfiguration = new ModelConfiguration({
+            ...fixture.modelConfiguration,
+            typeConfigStore
+          });
+        } catch (e) {
+          console.error(e);
+          throw new Error(`Fixture setup failed`);
+        }
       });
-    }
 
-    const modelConfiguration = new ModelConfiguration({
-      ...fixture.modelConfiguration,
-      typeConfigStore
-    });
-
-    describe(`Fixture ${safeId(modelConfiguration.modelId)}`, function() {
       fixture.scenarios.forEach((scenario, index) => {
-        it(`Scenario ${index}`, () => {
-          const [expectedIntentIds, input, extra = {}] = scenario;
+        const [expectedIntentIds, input, extra = {}] = scenario;
+        it(`Scenario ${index}${
+          extra.description ? ` ${extra.description}` : ''
+        }`, () => {
           const runScenario = () =>
             getIntentions(modelConfiguration, input, {
               verbose: true

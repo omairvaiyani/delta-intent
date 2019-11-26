@@ -4,45 +4,44 @@ import { ErrorCode } from '../../../src/interfaces/error-types';
 export const fixture: TestFixture = {
   typeConfigList: [
     {
-      typeId: 'CleanString',
-      validator: input => ['undefined', 'string'].includes(typeof input.value),
-      sanitizer: input =>
-        input.modifiedValue ? input.modifiedValue.trim() : undefined
-    },
-    {
       typeId: 'Age',
       validator: input =>
-        typeof input.value === 'number'
-          ? input.value > 4 && input.value < 25
-          : typeof input.value === 'undefined',
-      sanitizer: input => Math.floor(input.modifiedValue)
+        typeof input.modifiedValue === 'number'
+          ? input.modifiedValue > 4 && input.modifiedValue < 25
+          : typeof input.modifiedValue === 'undefined'
     },
     {
       typeId: 'Email',
       validator: input =>
-        typeof input.value === 'string' &&
+        typeof input.modifiedValue === 'string' &&
         /^(([^<>()\[\]\.,;:\s@\"]+(\.[^<>()\[\]\.,;:\s@\"]+)*)|(\".+\"))@(([^<>()[\]\.,;:\s@\"]+\.)+[^<>()[\]\.,;:\s@\"]{2,})$/i.test(
-          input.value
+          input.modifiedValue
         ),
-      sanitizer: input =>
-        typeof input.modifiedValue === 'string'
-          ? input.modifiedValue.toLowerCase()
-          : input.modifiedValue
+      sanitiser: input => {
+        let sanitisedValue: string;
+        if (typeof input.modifiedValue === 'string') {
+          sanitisedValue = input.modifiedValue.toLowerCase();
+        }
+        return {
+          didSanitise: sanitisedValue !== input.modifiedValue,
+          sanitisedValue
+        };
+      }
     },
     {
       typeId: 'File',
       validator: input =>
-        typeof input.value === 'undefined' ||
-        (Object.hasOwnProperty.call(input.value, 'url') &&
-          Object.hasOwnProperty.call(input.value, 'name')),
+        typeof input.modifiedValue === 'undefined' ||
+        (Object.hasOwnProperty.call(input.modifiedValue, 'url') &&
+          Object.hasOwnProperty.call(input.modifiedValue, 'name')),
       objectHasher: file => file.url
     },
     {
       typeId: 'Badge',
       validator: input =>
-        typeof input.value === 'undefined' ||
-        (Object.hasOwnProperty.call(input.value, 'icon') &&
-          Object.hasOwnProperty.call(input.value, 'label')),
+        typeof input.modifiedValue === 'undefined' ||
+        (Object.hasOwnProperty.call(input.modifiedValue, 'icon') &&
+          Object.hasOwnProperty.call(input.modifiedValue, 'label')),
       objectHasher: badge => badge.label
     }
   ],
@@ -50,8 +49,7 @@ export const fixture: TestFixture = {
     modelId: 'Profile',
     fieldConfigList: [
       {
-        fieldId: 'name',
-        typeId: 'CleanString'
+        fieldId: 'name'
       },
       {
         fieldId: 'age',
@@ -68,7 +66,7 @@ export const fixture: TestFixture = {
       {
         fieldId: 'badges',
         typeId: 'Badge',
-        array: true
+        isArray: true
       }
     ],
     intentConfigList: [
@@ -296,13 +294,29 @@ export const fixture: TestFixture = {
         }
       },
       {
+        description: 'invalid field',
         error: {
           code: ErrorCode.InvalidModifiedState,
           message: null,
           info: {
-            fieldIds: ['email', 'badgees']
+            fieldIds: ['email', 'badges']
           }
         }
+      }
+    ],
+    [
+      [],
+      {
+        modifiedState: {
+          email: 'Scooby.Doo@mysteries.CNN'
+        },
+        existingState: {
+          name: 'Scooby Doo',
+          email: 'scooby.doo@mysteries.cnn'
+        }
+      },
+      {
+        description: 'sanitised field should be unmodifed'
       }
     ]
   ]

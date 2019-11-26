@@ -1,10 +1,7 @@
-import Joi from '@hapi/joi';
 import { ModelConfiguration } from './model-configuration';
 import {
   ModelState,
   IntentId,
-  ModelState_S,
-  IntentId_S,
   InputValue,
   FieldId
 } from '../interfaces/base-types';
@@ -15,7 +12,6 @@ import {
   ArrayDelta,
   DeltaCheck,
   DeltaCheckConfig,
-  FieldDeltaOutcome_S,
   ValueMatch,
   ValueMatchPresence
 } from '../interfaces/match-config-types';
@@ -29,11 +25,19 @@ import { BaseTypeConfig, TypeConfig } from '../interfaces/custom-types';
 import { hasProperty, safeId } from '../utils/common';
 import { ErrorCode } from '../interfaces/error-types';
 import { DeltaIntentError, throwIfInvalidShape } from '../utils/validator';
+import {
+  GetIntentionsInput,
+  GetIntentionsResponse,
+  GetIntentionsInput_S,
+  FieldModificationData,
+  FieldWithTypeConfigMap
+} from '../interfaces/get-intentions-types';
+import { isUndefined } from 'util';
 
 const getIntentions = function(
   modelConfiguration: ModelConfiguration,
   input: GetIntentionsInput,
-  options?: { skipValidation?: boolean; debug?: boolean; verbose?: boolean }
+  options: { skipValidation?: boolean; debug?: boolean; verbose?: boolean } = {}
 ): GetIntentionsResponse {
   const verbose = (message: any) =>
     options.verbose && console.log(JSON.stringify(message));
@@ -59,32 +63,43 @@ const getIntentions = function(
     } = modelConfiguration;
     const { existingState, modifiedState } = input;
 
-    const modifiedFieldsToSanitize = fieldConfigList
-      .filter(field => field.sanitizer)
-      .filter(isFieldModified.bind(null, modifiedState));
+    const fieldWithTypeConfigList: FieldWithTypeConfigMap[] = fieldConfigList.map(
+      fieldConfig => ({
+        fieldConfig,
+        typeConfig: getFieldTypeConfig(typeConfigList, fieldConfig)
+      })
+    );
 
     const sanitisedState: ModelState | null = getSanitizedInput(
-      modifiedFieldsToSanitize,
+      fieldWithTypeConfigList
+        .filter(map => map.typeConfig.sanitiser)
+        .filter(map => isFieldModified(modifiedState, map.fieldConfig)),
       modifiedState,
       existingState
+    );
+
+    const fieldModificationList = fieldConfigList.map(fieldConfig =>
+      getFieldModificationData(
+        fieldConfig,
+        fieldWithTypeConfigList.find(
+          map => map.fieldConfig.fieldId === fieldConfig.fieldId
+        ).typeConfig,
+        {
+          modified: modifiedState,
+          sanitised: sanitisedState,
+          existing: existingState
+        }
+      )
     );
 
     if (options.skipValidation) {
       verbose('opted to skip validation');
     } else {
-      const fieldValidationList = fieldConfigList
-        .filter(isFieldModified.bind(null, modifiedState))
-        .map(fieldConfig => ({
-          fieldId: fieldConfig.fieldId,
-          value: getSanitisedModifiedValue(
-            fieldConfig.fieldId,
-            modifiedState,
-            sanitisedState
-          ),
-          typeConfig: getFieldTypeConfig(typeConfigList, fieldConfig)
-        }));
-      verbose(`validating ${fieldValidationList.length} modified fields`);
-      const invalidFields = getInvalidFields(fieldValidationList);
+      const isInModifiedStateFMDList = fieldModificationList.filter(
+        fMD => fMD.isInModifiedState
+      );
+      verbose(`validating ${isInModifiedStateFMDList.length} modified fields`);
+      const invalidFields = getInvalidFields(isInModifiedStateFMDList);
       if (invalidFields.length) {
         throw new DeltaIntentError(
           ErrorCode.InvalidModifiedState,
@@ -113,33 +128,24 @@ const getIntentions = function(
             const { fieldMatch, deltaMatch } = matchConfigItem;
             debug(`matching ${fieldMatch}`);
 
-            const matchedFieldConfigList = matchFieldsToConfigList(
+            const matchedFMDList = filterFMDListByMatchConfig(
               fieldMatch,
-              fieldConfigList
+              fieldModificationList
             );
-            verbose(`${matchedFieldConfigList.length} fields to match against`);
+            verbose(`${matchedFMDList.length} fields to match against`);
 
-            const flatFDOList = matchedFieldConfigList.map(fieldConfig => {
-              const { fieldId } = fieldConfig;
+            const flatFDOList = matchedFMDList.map(fieldModificationData => {
+              const {
+                fieldId,
+                isInModifiedState,
+                deltaValues
+              } = fieldModificationData;
               verbose(`${fieldId}: getting delta outcome`);
-              const existingValue = existingState
-                ? existingState[fieldConfig.fieldId]
-                : undefined;
-
-              const sanitisedValue = sanitisedState && sanitisedState[fieldId];
-              const modifiedValue = sanitisedValue || modifiedState[fieldId];
-              const isInModifiedState = hasProperty(
-                modifiedState,
-                safeId(fieldId)
-              );
 
               debug({
                 fieldId,
                 isInModifiedState,
-                existingValue,
-                sanitisedValue,
-                modifiedValue: modifiedState[fieldConfig.fieldId],
-                usingSanitisedValue: !!sanitisedValue
+                deltaValues
               });
 
               verbose({
@@ -147,14 +153,8 @@ const getIntentions = function(
               });
 
               const fDO: FieldDeltaOutcome = discernFieldDeltaOutcome(
-                typeConfigList,
-                fieldConfig,
-                deltaMatch,
-                {
-                  existingValue,
-                  modifiedValue
-                },
-                isInModifiedState
+                fieldModificationData,
+                deltaMatch
               );
 
               verbose({ fieldId, deltaOutcome: fDO });
@@ -205,10 +205,7 @@ const getIntentions = function(
     };
   } catch (e) {
     if (e instanceof DeltaIntentError) {
-      if (!e.info) {
-        e.info = {};
-      }
-      e.info.modelId = modelIdSafe;
+      e.modelId = modelIdSafe;
       throw e;
     } else {
       throw new DeltaIntentError(ErrorCode.UnknownError, e.message);
@@ -217,15 +214,17 @@ const getIntentions = function(
 };
 
 const discernFieldDeltaOutcome = function(
-  typeConfigList: TypeConfig[],
-  fieldConfig: FieldConfig,
-  deltaMatch: DeltaMatch,
-  deltaValues: DeltaValues,
-  isInModifiedState: boolean
+  fieldModificationData: FieldModificationData,
+  deltaMatch: DeltaMatch
 ): FieldDeltaOutcome {
-  const { existingValue, modifiedValue } = deltaValues;
+  const {
+    typeConfig,
+    fieldConfig,
+    isInModifiedState,
+    isArray,
+    deltaValues
+  } = fieldModificationData;
   const { deltaCheck, existingState, modifiedState } = deltaMatch;
-  const typeConfig = getFieldTypeConfig(typeConfigList, fieldConfig);
 
   let didMatch: boolean = false;
   let delta: Delta;
@@ -234,9 +233,15 @@ const discernFieldDeltaOutcome = function(
   if (existingState || modifiedState) {
     const [existingStateMatches, modifiedStateMatches] = [
       existingState
-        ? doesValueMatchExpected(existingState, existingValue)
+        ? doesValueMatchExpected(
+            existingState,
+            isInModifiedState ? deltaValues.existingValue : undefined
+          )
         : true,
-      doesValueMatchExpected(modifiedState, modifiedValue)
+      doesValueMatchExpected(
+        modifiedState,
+        isInModifiedState ? deltaValues.modifiedValue : undefined
+      )
     ];
     didMatch = existingStateMatches && modifiedStateMatches;
   } else if (isInModifiedState && deltaCheck) {
@@ -304,92 +309,142 @@ const isFieldModified = function(
 };
 
 const getSanitizedInput = function(
-  fieldConfigList: FieldConfig[],
+  fieldWithTypeConfigList: FieldWithTypeConfigMap[],
   modifiedState: ModelState,
   existingState: ModelState
 ): ModelState | null {
   const sanitizedState: ModelState = {};
-  let didSanitizeAny: boolean;
-  fieldConfigList.forEach(fieldConfig => {
-    if (fieldConfig.sanitizer) {
-      const fieldKey = fieldConfig.fieldId;
+  let didSanitiseAny: boolean;
+  fieldWithTypeConfigList.forEach(({ fieldConfig, typeConfig }) => {
+    const { fieldId } = fieldConfig;
+    const { sanitiser } = typeConfig;
+    if (sanitiser) {
       const deltaValues: DeltaValues = {
-        modifiedValue: modifiedState[fieldKey]
+        modifiedValue: modifiedState[fieldId]
       };
       if (existingState) {
-        deltaValues.existingValue = modifiedState[fieldConfig.fieldId];
+        deltaValues.existingValue = existingState[fieldId];
       }
-      const { didSanitize, sanitizedValue } = fieldConfig.sanitizer(
-        deltaValues
-      );
-      if (didSanitize) {
-        sanitizedState[fieldConfig.fieldId] = sanitizedValue;
-        didSanitizeAny = true;
+      const { didSanitise, sanitisedValue } = sanitiser(deltaValues);
+      if (didSanitise) {
+        sanitizedState[fieldConfig.fieldId] = sanitisedValue;
+        didSanitiseAny = true;
       }
     }
   });
-  return didSanitizeAny ? sanitizedState : null;
+  return didSanitiseAny ? sanitizedState : null;
 };
 
-/**
- * If a sanitised value is present, returns
- * it else returns value from modified state
- */
-const getSanitisedModifiedValue = function(
-  fieldId: FieldId,
-  modifiedState: ModelState,
-  sanitisedState?: ModelState
-): any {
-  const sanitisedValue = sanitisedState && sanitisedState[fieldId];
-  return sanitisedValue || modifiedState[fieldId];
+const getFieldModificationData = function(
+  fieldConfig: FieldConfig,
+  typeConfig: BaseTypeConfig,
+  states: {
+    modified: ModelState;
+    existing?: ModelState;
+    sanitised?: ModelState;
+  }
+): FieldModificationData {
+  const { fieldId } = fieldConfig;
+  const data: FieldModificationData = {
+    fieldId,
+    fieldConfig,
+    typeConfig,
+    isArray: !!fieldConfig.isArray,
+    isInModifiedState: hasProperty(states.modified, safeId(fieldId)),
+    rawValues: {},
+    deltaValues: undefined
+  };
+
+  if (states.existing) {
+    data.rawValues.existing = states.existing[fieldId];
+  }
+
+  if (data.isInModifiedState) {
+    const modifiedValue = states.modified[fieldId];
+    data.rawValues.modified = modifiedValue;
+    data.deltaValues = {
+      modifiedValue,
+      existingValue: data.rawValues.existing
+    };
+
+    const sanitisedValue = states.sanitised
+      ? states.sanitised[fieldId]
+      : undefined;
+    if (typeof sanitisedValue !== 'undefined') {
+      data.rawValues.sanitised = sanitisedValue;
+      data.deltaValues.modifiedValue = sanitisedValue;
+    }
+  }
+
+  return data;
 };
 
 const getInvalidFields = function(
-  // TODO this one-off interface is getting complicated
-  // it may be worth having a common interface that
-  // contains all information for each field, and used
-  // for sanitisation, validation and delta checking
-  list: {
-    fieldId: FieldId;
-    isArrayField: boolean;
-    value: any;
-    typeConfig: BaseTypeConfig;
-  }[]
+  fieldModificationList: FieldModificationData[]
 ): FieldId[] {
   const invalidFields: FieldId[] = [];
 
-  list.forEach(({ fieldId, value, typeConfig }) => {
-    const { validator } = typeConfig;
-    if (validator && !validator({ value })) {
-      invalidFields.push(fieldId);
+  fieldModificationList.forEach(
+    ({ fieldId, typeConfig, isArray, deltaValues }) => {
+      const { validator } = typeConfig;
+      if (validator) {
+        const value = deltaValues.modifiedValue;
+        const validatorParams = { modifiedValue: value } as any;
+        if (!isUndefined(deltaValues.existingValue)) {
+          validatorParams.existingValue = deltaValues.existingValue;
+        }
+        let isValid: boolean;
+        if (isArray) {
+          // if exists, ensure it's array
+          // and each item is valid,
+          // else skip validation
+          // NOTE: this may need configuration
+          // such as `isRequired` in array validation
+          isValid = isUndefined(value)
+            ? true
+            : Array.isArray(value)
+            ? value.every(v =>
+                validator({ ...validatorParams, modifiedValue: v })
+              )
+            : false;
+        } else {
+          isValid = validator(validatorParams);
+        }
+        if (!isValid) {
+          invalidFields.push(fieldId);
+        }
+      }
     }
-  });
+  );
 
   return invalidFields;
 };
 
-const matchFieldsToConfigList = function(
+/**
+ * `FMD` = FieldModificationData
+ */
+const filterFMDListByMatchConfig = function(
   fieldMatch: FieldMatch,
-  fieldConfigList: FieldConfig[]
-): FieldConfig[] {
-  let matchedFieldConfigList: FieldConfig[];
-  const getFieldConfig = (fieldId: FieldId) =>
-    fieldConfigList.find(fieldConfig => fieldConfig.fieldId === fieldId);
+  fieldModificationList: FieldModificationData[]
+): FieldModificationData[] {
+  let matchedFieldModificationList: FieldModificationData[];
+  const getFieldModificationData = (fieldId: FieldId): FieldModificationData =>
+    fieldModificationList.find(fMD => fMD.fieldId === fieldId);
   if (Array.isArray(fieldMatch)) {
-    matchedFieldConfigList = [];
+    matchedFieldModificationList = [];
     fieldMatch.forEach(f => {
       if (Array.isArray(f)) {
         f.forEach(fieldId =>
-          matchedFieldConfigList.push(getFieldConfig(fieldId))
+          matchedFieldModificationList.push(getFieldModificationData(fieldId))
         );
       } else {
-        matchedFieldConfigList.push(getFieldConfig(f));
+        matchedFieldModificationList.push(getFieldModificationData(f));
       }
     });
   } else {
-    matchedFieldConfigList = [getFieldConfig(fieldMatch)];
+    matchedFieldModificationList = [getFieldModificationData(fieldMatch)];
   }
-  return matchedFieldConfigList;
+  return matchedFieldModificationList;
 };
 
 /**
@@ -520,7 +575,7 @@ const doesValueMatchExpected = function(
   if (hasProperty(valueMatch, 'value')) {
     match = valueMatch.value === value;
   } else if (hasProperty(valueMatch, 'validate')) {
-    match = valueMatch.manual({ value });
+    match = valueMatch.manual({ modifiedValue: value });
   } else if (hasProperty(valueMatch, 'presence')) {
     match = {
       [ValueMatchPresence.Forbidden]: value === undefined,
@@ -531,28 +586,4 @@ const doesValueMatchExpected = function(
   return match;
 };
 
-const GetIntentionsInput_S = Joi.object({
-  modifiedState: ModelState_S.required(),
-  existingState: ModelState_S.optional()
-});
-export interface GetIntentionsInput {
-  modifiedState: ModelState;
-  existingState?: ModelState;
-}
-
-const GetIntentionsResponse_S = Joi.object({
-  intentIds: Joi.array()
-    .items(IntentId_S)
-    .required(),
-  fieldDeltaOutcomeList: Joi.array()
-    .items(FieldDeltaOutcome_S)
-    .required(),
-  sanitisations: ModelState_S.optional()
-});
-export interface GetIntentionsResponse {
-  intentIds: IntentId[];
-  fieldDeltaOutcomeList: FieldDeltaOutcome[];
-  sanitisations?: ModelState;
-}
-
-export { getIntentions, GetIntentionsResponse_S };
+export { getIntentions };

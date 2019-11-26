@@ -6,27 +6,40 @@ export const fixture: TestFixture = {
     {
       typeId: 'Email',
       validator: input =>
-        typeof input.value === 'string' &&
+        typeof input.modifiedValue === 'string' &&
         /^(([^<>()\[\]\.,;:\s@\"]+(\.[^<>()\[\]\.,;:\s@\"]+)*)|(\".+\"))@(([^<>()[\]\.,;:\s@\"]+\.)+[^<>()[\]\.,;:\s@\"]{2,})$/i.test(
-          input.value
+          input.modifiedValue
         ),
-      sanitizer: input =>
-        typeof input.modifiedValue === 'string'
-          ? input.modifiedValue.toLowerCase()
-          : input.modifiedValue
+      sanitiser: input => {
+        let sanitisedValue: string;
+        if (typeof input.modifiedValue === 'string') {
+          sanitisedValue = input.modifiedValue.toLowerCase();
+        }
+        return {
+          didSanitise: sanitisedValue !== input.modifiedValue,
+          sanitisedValue
+        };
+      }
     },
     {
       typeId: 'Card',
       validator: input =>
-        typeof input.value === 'string' &&
-        input.value.split('-').join('').length === 12
+        typeof input.modifiedValue === 'string' &&
+        input.modifiedValue.split('-').join('').length === 12
     }
   ],
   modelConfiguration: {
     modelId: 'PurchaseOrder',
     fieldConfigList: [
       {
-        fieldId: 'productId'
+        fieldId: 'productId',
+        // enforce type string with min lengt 1
+        // and immutability
+        validator: deltaValues =>
+          deltaValues.existingValue
+            ? false
+            : typeof deltaValues.modifiedValue === 'string' &&
+              !!deltaValues.modifiedValue.trim().length
       },
       {
         fieldId: 'email',
@@ -38,8 +51,8 @@ export const fixture: TestFixture = {
       },
       {
         fieldId: 'status',
-        validator: ({ value }) =>
-          ['pending', 'completed', 'canceled'].includes(value)
+        validator: ({ modifiedValue }) =>
+          ['pending', 'completed', 'canceled'].includes(modifiedValue)
       }
     ],
     intentConfigList: [
@@ -130,10 +143,63 @@ export const fixture: TestFixture = {
         }
       },
       {
+        description: 'invalid value',
         error: {
           code: ErrorCode.InvalidModifiedState,
           message: null,
           info: { fieldIds: ['card'] }
+        }
+      }
+    ],
+    [
+      ['CompleteOrder'],
+      {
+        modifiedState: {
+          status: 'completed'
+        },
+        existingState: {
+          productId: 'SomeWidget',
+          email: 'shopper.mcgee@domain.com',
+          card: '0000-0000-0000',
+          status: 'pending'
+        }
+      }
+    ],
+    [
+      ['CancelOrder'],
+      {
+        modifiedState: {
+          status: 'canceled'
+        },
+        existingState: {
+          productId: 'SomeWidget',
+          email: 'shopper.mcgee@domain.com',
+          card: '0000-0000-0000',
+          status: 'completed'
+        }
+      }
+    ],
+    [
+      [],
+      {
+        modifiedState: {
+          productId: 'some-other-id'
+        },
+        existingState: {
+          productId: 'SomeWidget',
+          email: 'shopper.mcgee@domain.com',
+          card: '0000-0000-0000',
+          status: 'completed'
+        }
+      },
+      {
+        description: 'modify immutable field',
+        error: {
+          code: ErrorCode.InvalidModifiedState,
+          message: null,
+          info: {
+            fieldIds: ['productId']
+          }
         }
       }
     ]
