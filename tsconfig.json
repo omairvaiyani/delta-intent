@@ -16,6 +16,6 @@
     "outDir": "dist",
     "declaration": true
   },
-  "include": ["src/**/*", "spec/unit/utils.spec.ts", "spec/unit/index.spec.ts"],
+  "include": ["src/**/*", "spec/unit/utils.spec.ts", "spec/unit/model-configuration.spec.ts"],
   "exclude": []
 }

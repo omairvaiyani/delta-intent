@@ -1,15 +1,17 @@
 import Joi from '@hapi/joi';
 import { FieldId, FieldId_S } from './base-types';
-import { BaseTypeConfig } from './custom-types';
+import { BaseTypeConfig, _BaseTypeConfig_S } from './custom-types';
 
-const IFieldConfig_S = Joi.object({
+const FieldConfig_S = Joi.object({
   fieldId: FieldId_S.required(),
-  typeId: Joi.string().optional()
+  typeId: Joi.string().optional(),
+  ..._BaseTypeConfig_S
 });
-interface IFieldConfig extends BaseTypeConfig {
+interface FieldConfig extends BaseTypeConfig {
   fieldId: FieldId;
   typeId?: string;
+  array?: boolean;
 }
 
-export { IFieldConfig_S }
-export { IFieldConfig };
+export { FieldConfig_S };
+export { FieldConfig };

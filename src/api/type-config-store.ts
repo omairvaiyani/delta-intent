@@ -1,16 +1,16 @@
 import Joi from '@hapi/joi';
-import { ITypeConfig, ITypeConfig_S } from '../interfaces/custom-types';
+import { TypeConfig, TypeConfig_S } from '../interfaces/custom-types';
 import { throwIfInvalidShape, throwIfDuplicates } from '../utils/validator';
 import { TypeId, TypeId_S } from '../interfaces/base-types';
 
 class TypeConfigStore {
-  public readonly typeConfigList: ITypeConfig[];
+  public readonly typeConfigList: TypeConfig[];
 
-  constructor(input: { typeConfigList: ITypeConfig[] }) {
+  constructor(input: { typeConfigList: TypeConfig[] }) {
     throwIfInvalidShape(
       input.typeConfigList,
       Joi.array()
-        .items(ITypeConfig_S)
+        .items(TypeConfig_S)
         .min(1)
         .required()
     );
@@ -19,7 +19,7 @@ class TypeConfigStore {
     this.typeConfigList = input.typeConfigList;
   }
 
-  public getTypeConfig(typeId: TypeId): ITypeConfig {
+  public getTypeConfig(typeId: TypeId): TypeConfig {
     throwIfInvalidShape(typeId, TypeId_S.required());
     return this.typeConfigList.find(c => c.typeId === typeId);
   }

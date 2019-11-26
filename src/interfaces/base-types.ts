@@ -24,11 +24,11 @@ const DefaultValueType_S = Joi.string().valid(
   'symbol'
 );
 
-type ModelId = Joi.extractType<typeof ModelId_S>;
-type IntentId = Joi.extractType<typeof IntentId_S>;
-type FieldId = Joi.extractType<typeof FieldId_S>;
-type TypeId = Joi.extractType<typeof TypeId_S>;
 type InputValue = Joi.extractType<typeof InputValue_S>;
+type ModelId = string | number | symbol;
+type IntentId = string | number | symbol;
+type FieldId = string | number;
+type TypeId = Joi.extractType<typeof TypeId_S>;
 type ModelState = Record<FieldId, InputValue>;
 
 enum DefaultValueType {

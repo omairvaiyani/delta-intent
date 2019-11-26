@@ -19,13 +19,13 @@ interface BaseTypeConfig {
   objectHasher?: ObjectHasher;
 }
 
-const ITypeConfig_S = Joi.object({
+const TypeConfig_S = Joi.object({
   ..._BaseTypeConfig_S,
   typeId: TypeId_S.required()
 });
-interface ITypeConfig extends BaseTypeConfig {
+interface TypeConfig extends BaseTypeConfig {
   typeId: TypeId;
 }
 
-export { BaseTypeConfig_S, ITypeConfig_S };
-export { BaseTypeConfig, ITypeConfig };
+export { _BaseTypeConfig_S, BaseTypeConfig_S, TypeConfig_S };
+export { BaseTypeConfig, TypeConfig };

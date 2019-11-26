@@ -15,9 +15,11 @@
   "devDependencies": {
     "@types/chai": "4.2.5",
     "@types/jasmine": "3.5.0",
+    "@types/node": "^12.12.12",
     "@types/prettier": "1.18.4",
     "@typescript-eslint/eslint-plugin": "2.8.0",
     "@typescript-eslint/parser": "2.8.0",
+    "joi-extract-type": "15.0.2",
     "chai": "4.2.0",
     "eslint": "6.6.0",
     "eslint-config-airbnb-base": "14.0.0",
@@ -31,7 +33,6 @@
   },
   "dependencies": {
     "@hapi/joi": "15.0.3",
-    "joi-extract-type": "15.0.2",
     "jsondiffpatch": "0.3.11"
   }
 }

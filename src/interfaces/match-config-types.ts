@@ -3,34 +3,53 @@ import { FieldId, InputValue, FieldId_S, InputValue_S } from './base-types';
 import { Validator, Validator_S } from './validator-types';
 import { DeltaValues, Delta, Delta_S } from './delta-types';
 import { DifferOptions } from '../utils/diff';
+import { enumValues } from '../utils/common';
 
 const FieldMatch_S = Joi.alternatives().try([
   FieldId_S,
-  Joi.array().items(FieldId_S)
+  Joi.array()
+    .items(
+      Joi.alternatives().try([
+        FieldId_S,
+        Joi.array()
+          .items(FieldId_S)
+          .min(1)
+      ])
+    )
+    .min(1)
 ]);
-type FieldMatch = FieldId | FieldId[];
+type FieldMatch = FieldId | Array<FieldId | FieldId[]>;
 
 const DeltaChecker_S = Joi.func()
   .minArity(1)
   .maxArity(2);
+
 type DeltaChecker = (
   deltaValues: DeltaValues,
   options?: { differOptions?: DifferOptions }
 ) => Delta;
 
+enum ValueMatchPresence {
+  Optional = 'optional',
+  Required = 'required',
+  Forbidden = 'forbidden'
+}
+
 const ValueMatch_S = Joi.object({
-  forbidden: Joi.boolean().optional(),
-  any: Joi.boolean().optional(),
+  presence: Joi.string()
+    .valid(enumValues(ValueMatchPresence))
+    .optional(),
   value: InputValue_S.optional(),
   manual: Validator_S.optional()
 });
+
 interface ValueMatch extends Joi.extractType<typeof ValueMatch_S> {
+  presence?: 'optional' | 'required' | 'forbidden';
   value?: InputValue;
   manual?: Validator;
 }
 
 const DeltaCheckConfig_S = Joi.object({
-  ifUnchanged: Joi.boolean().optional(),
   arrayChanges: Joi.object({
     added: Joi.alternatives()
       .try([Joi.boolean(), Joi.number()])
@@ -113,14 +132,14 @@ interface ArrayDelta {
 
 const FieldDeltaOutcome_S = Joi.object({
   fieldId: FieldId_S.required(),
-  delta: Delta_S.required(),
-  deltaMatch: Joi.boolean().required(),
+  didMatch: Joi.boolean().required(),
+  delta: Delta_S.optional(),
   arrayDelta: ArrayDelta_S.optional()
 });
 interface FieldDeltaOutcome {
   fieldId: FieldId;
-  delta: Delta;
   didMatch: boolean;
+  delta?: Delta;
   arrayDelta?: ArrayDelta;
 }
 
@@ -137,6 +156,7 @@ export {
 export {
   FieldMatch,
   ValueMatch,
+  ValueMatchPresence,
   DeltaMatch,
   MatchConfig,
   MatchConfigItem,
