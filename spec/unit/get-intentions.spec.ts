@@ -86,7 +86,7 @@ describe('getIntentions', function() {
         }`, () => {
           const runScenario = () =>
             getIntentions(modelConfiguration, input, {
-              verbose: true
+              verbose: false
             });
           if (extra.error) {
             const { code, message, info } = extra.error;

@@ -8,6 +8,7 @@ import { FieldConfig, FieldConfig_S } from '../interfaces/field-config-types';
 import { TypeConfig, TypeConfig_S } from '../interfaces/custom-types';
 import { TypeConfigStore } from './type-config-store';
 import { throwIfInvalidShape, throwIfDuplicates } from '../utils/validator';
+import { safeId } from '../utils/common';
 
 class ModelConfiguration {
   public readonly modelId: ModelId;
@@ -46,9 +47,9 @@ class ModelConfiguration {
       .filter(t => !availableTypes.includes(t));
     if (unknownTypes.length) {
       throw new Error(
-        `ModelConfiguration ${
+        `ModelConfiguration ${safeId(
           this.modelId
-        } is invalid; your field config list points to unknown types ${JSON.stringify(
+        )} is invalid; your field config list points to unknown types ${JSON.stringify(
           unknownTypes
         )}`
       );
