@@ -1,5 +1,6 @@
 {
   "name": "delta-init",
+  "version": "0.0.1",
   "author": {
     "name": "Omair Vaiyani",
     "url": "https://github.com/omairvaiyani"
@@ -9,7 +10,8 @@
     "debug-ts": "node --inspect -r ts-node/register/transpile-only src/index.ts",
     "build": "tsc --p tsconfig.json",
     "jasmine": "node -r ts-node/register/transpile-only ./node_modules/.bin/jasmine",
-    "test": "nyc -e .ts -x \"spec/**/*.ts\" --reporter=lcov jasmine-ts \"spec/**/*.spec.ts\""
+    "test": "nyc -e .ts -x \"spec/**/*.ts\" --reporter=lcov jasmine-ts \"spec/**/*.spec.ts\"",
+    "release": "standard-version && npm run-script git-tag-release"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -32,6 +34,7 @@
     "joi-extract-type": "15.0.2",
     "nyc": "^14.1.1",
     "prettier": "1.19.1",
+    "standard-version": "^7.0.1",
     "ts-node": "8.5.2",
     "typescript": "3.7.2"
   },
