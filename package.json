@@ -16,7 +16,8 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "./dist/**"
+    "dist/",
+    "README.md"
   ],
   "devDependencies": {
     "@istanbuljs/nyc-config-typescript": "^0.1.3",
