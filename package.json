@@ -1,6 +1,6 @@
 {
   "name": "delta-intent",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "author": {
     "name": "Omair Vaiyani",
     "url": "https://github.com/omairvaiyani"
@@ -11,7 +11,8 @@
     "build": "tsc --p tsconfig.json",
     "jasmine": "node -r ts-node/register/transpile-only ./node_modules/.bin/jasmine",
     "test": "nyc -e .ts -x \"spec/**/*.ts\" --reporter=lcov jasmine-ts \"spec/**/*.spec.ts\"",
-    "release": "standard-version"
+    "release": "standard-version",
+    "postrelease": "git push --follow-tags origin master && npm publish"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
