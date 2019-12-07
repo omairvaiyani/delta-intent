@@ -4,12 +4,14 @@ import {
   ModelState,
   IntentId_S,
   IntentId,
-  FieldId
+  FieldId,
+  ModelId
 } from './base-types';
 import { FieldDeltaOutcome_S, FieldDeltaOutcome } from './match-config-types';
 import { BaseTypeConfig, TypeConfig } from './custom-types';
 import { FieldConfig } from './field-config-types';
 import { DeltaValues } from './delta-types';
+import { InvalidFieldValue, ErrorCode } from './error-types';
 
 const GetIntentionsInput_S = Joi.object({
   modifiedState: ModelState_S.required(),
@@ -31,9 +33,18 @@ const GetIntentionsResponse_S = Joi.object({
 });
 
 interface GetIntentionsResponse {
-  intentIds: IntentId[];
-  fieldDeltaOutcomeList: FieldDeltaOutcome[];
+  intentIds?: IntentId[];
+  fieldDeltaOutcomeList?: FieldDeltaOutcome[];
   sanitisations?: ModelState;
+  error?: GetIntentionsError;
+}
+
+interface GetIntentionsError {
+  modelId: ModelId;
+  code: ErrorCode;
+  message: string;
+  invalidFields?: InvalidFieldValue[];
+  info?: Record<string, any>;
 }
 
 interface FieldModificationData {
@@ -41,6 +52,7 @@ interface FieldModificationData {
   fieldConfig: FieldConfig;
   typeConfig: BaseTypeConfig;
   isArray: boolean;
+  isRequired: boolean;
   isInModifiedState: boolean;
   rawValues: {
     modified?: any;
@@ -60,6 +72,7 @@ export { GetIntentionsInput_S, GetIntentionsResponse_S };
 export {
   GetIntentionsInput,
   GetIntentionsResponse,
+  GetIntentionsError,
   FieldModificationData,
   FieldWithTypeConfigMap
 };

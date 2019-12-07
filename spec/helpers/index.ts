@@ -10,7 +10,7 @@ const getFieldConfig = (fieldId?: FieldId): FieldConfig => ({
 });
 const getIntentConfig = (
   intentId?: IntentId,
-  fieldIds?: FieldId[]
+  fieldIds?: Array<FieldId | FieldId[]>
 ): IntentConfig => ({
   intentId: intentId || '1',
   isCreate: true,

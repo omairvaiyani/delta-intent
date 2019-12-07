@@ -1,5 +1,6 @@
 import { TestFixture } from './interface';
 import { ErrorCode } from '../../../src/interfaces/error-types';
+import { DefaultInvalidValueMessage } from '../../../src/interfaces/validator-types';
 
 export const fixture: TestFixture = {
   typeConfigList: [
@@ -175,7 +176,8 @@ export const fixture: TestFixture = {
         modifiedState: {
           name: 'Scooby Doo',
           age: 10,
-          email: 'scooby.doo@mysteries.cnn'
+          email: 'scooby.doo@mysteries.cnn',
+          foO: 'baz'
         }
       }
     ],
@@ -296,11 +298,21 @@ export const fixture: TestFixture = {
       {
         description: 'invalid field',
         error: {
-          code: ErrorCode.InvalidModifiedState,
+          modelId: null,
           message: null,
-          info: {
-            fieldIds: ['email', 'badges']
-          }
+          code: ErrorCode.InvalidModifiedState,
+          invalidFields: [
+            {
+              fieldId: 'email',
+              value: 'invalid-email@',
+              reason: DefaultInvalidValueMessage
+            },
+            {
+              fieldId: 'badges',
+              value: [{ _icon: 'hi' }],
+              reason: `1 item in array failed validation; item 0 failed because '${DefaultInvalidValueMessage}'`
+            }
+          ]
         }
       }
     ],

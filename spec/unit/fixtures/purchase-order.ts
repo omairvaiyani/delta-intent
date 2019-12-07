@@ -24,8 +24,10 @@ export const fixture: TestFixture = {
     {
       typeId: 'Card',
       validator: input =>
-        typeof input.modifiedValue === 'string' &&
-        input.modifiedValue.split('-').join('').length === 12
+        typeof input.modifiedValue !== 'string' ||
+        input.modifiedValue.split('-').join('').length !== 12
+          ? 'card must be 12 digits long'
+          : true
     }
   ],
   modelConfiguration: {
@@ -35,11 +37,13 @@ export const fixture: TestFixture = {
         fieldId: 'productId',
         // enforce type string with min lengt 1
         // and immutability
-        validator: deltaValues =>
-          deltaValues.existingValue
-            ? false
-            : typeof deltaValues.modifiedValue === 'string' &&
-              !!deltaValues.modifiedValue.trim().length
+        validator: params =>
+          params.isCreate
+            ? typeof params.modifiedValue === 'string' &&
+              !!params.modifiedValue.trim().length
+            : params.modifiedValue === params.existingValue
+            ? true
+            : 'cannot update productId'
       },
       {
         fieldId: 'email',
@@ -51,8 +55,18 @@ export const fixture: TestFixture = {
       },
       {
         fieldId: 'status',
-        validator: ({ modifiedValue }) =>
-          ['pending', 'completed', 'canceled'].includes(modifiedValue)
+        validator: [
+          ({ isCreate, modifiedValue }) =>
+            isCreate
+              ? modifiedValue === 'pending'
+                ? true
+                : 'new orders must have status pending'
+              : true,
+          ({ modifiedValue }) =>
+            ['pending', 'completed', 'canceled'].includes(modifiedValue)
+              ? true
+              : 'unknown status'
+        ]
       }
     ],
     intentConfigList: [
@@ -145,9 +159,16 @@ export const fixture: TestFixture = {
       {
         description: 'invalid value',
         error: {
+          modelId: 'PurchaseOrder',
           code: ErrorCode.InvalidModifiedState,
           message: null,
-          info: { fieldIds: ['card'] }
+          invalidFields: [
+            {
+              fieldId: 'card',
+              value: 'foo-bar',
+              reason: 'card must be 12 digits long'
+            }
+          ]
         }
       }
     ],
@@ -195,11 +216,68 @@ export const fixture: TestFixture = {
       {
         description: 'modify immutable field',
         error: {
+          modelId: null,
           code: ErrorCode.InvalidModifiedState,
           message: null,
-          info: {
-            fieldIds: ['productId']
-          }
+          invalidFields: [
+            {
+              fieldId: 'productId',
+              value: 'some-other-id',
+              reason: 'cannot update productId'
+            }
+          ]
+        }
+      }
+    ],
+    [
+      [],
+      {
+        modifiedState: {
+          productId: 'SomeWidget',
+          email: 'shopper.mcgee@domain.com',
+          card: '0000-0000-0000',
+          status: 'foobar'
+        }
+      },
+      {
+        description: 'multiple validators, multiple failed',
+        error: {
+          modelId: null,
+          message: null,
+          code: ErrorCode.InvalidModifiedState,
+          invalidFields: [
+            {
+              fieldId: 'status',
+              value: 'foobar',
+              reason: ['new orders must have status pending', 'unknown status']
+            }
+          ]
+        }
+      }
+    ],
+    [
+      [],
+      {
+        modifiedState: {
+          productId: 'SomeWidget',
+          email: 'shopper.mcgee@domain.com',
+          card: '0000-0000-0000',
+          status: 'completed'
+        }
+      },
+      {
+        description: 'multiple validators, single failed',
+        error: {
+          modelId: null,
+          message: null,
+          code: ErrorCode.InvalidModifiedState,
+          invalidFields: [
+            {
+              fieldId: 'status',
+              value: 'completed',
+              reason: 'new orders must have status pending'
+            }
+          ]
         }
       }
     ]

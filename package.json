@@ -10,7 +10,7 @@
     "debug-ts": "node --inspect -r ts-node/register/transpile-only src/index.ts",
     "build": "rm -rf dist && tsc --p tsconfig.build.json",
     "jasmine": "node -r ts-node/register/transpile-only ./node_modules/.bin/jasmine",
-    "test": "nyc -e .ts -x \"spec/**/*.ts\" --reporter=lcov jasmine-ts \"spec/**/*.spec.ts\"",
+    "test": "jasmine-ts \"spec/**/*.spec.ts\"",
     "release": "standard-version",
     "postrelease": "git push --follow-tags origin master && npm publish"
   },
@@ -36,7 +36,6 @@
     "jasmine": "3.5.0",
     "jasmine-spec-reporter": "4.2.1",
     "jasmine-ts": "^0.3.0",
-    "joi-extract-type": "15.0.2",
     "nyc": "^14.1.1",
     "prettier": "1.19.1",
     "standard-version": "^7.0.1",
@@ -44,7 +43,9 @@
     "typescript": "3.7.2"
   },
   "dependencies": {
-    "@hapi/joi": "15.0.3",
+    "@hapi/hoek": "^8.5.0",
+    "@hapi/joi": "15.1.1",
+    "joi-extract-type": "15.0.2",
     "jsondiffpatch": "0.3.11"
   }
 }

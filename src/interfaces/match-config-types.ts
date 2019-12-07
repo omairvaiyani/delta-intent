@@ -44,9 +44,9 @@ const ValueMatch_S = Joi.object({
 });
 
 interface ValueMatch extends Joi.extractType<typeof ValueMatch_S> {
-  presence?: 'optional' | 'required' | 'forbidden';
+  presence?: ValueMatchPresence;
   value?: InputValue;
-  manual?: Validator;
+  manual?: (values: DeltaValues) => boolean;
 }
 
 const DeltaCheckConfig_S = Joi.object({
@@ -62,7 +62,7 @@ const DeltaCheckConfig_S = Joi.object({
       .optional()
   })
 });
-interface DeltaCheckConfig extends Joi.extractType<typeof DeltaCheckConfig_S> {
+interface DeltaCheckConfig {
   arrayChanges?: {
     added?: boolean | number;
     removed?: boolean | number;

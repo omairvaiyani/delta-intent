@@ -1,13 +1,12 @@
 import { expect } from 'chai';
-import { ModelConfiguration } from '../../src/api/model-configuration';
+import { ModelConfiguration } from '../../src/core/model-configuration';
 import { getFieldConfig, getIntentConfig, getTypeConfig } from '../helpers';
 
 describe('ModelConfiguration', function() {
-  const getInput = () => ({
+  const getInput = (): ModelConfiguration.ConstructorParams => ({
     modelId: '1',
     fieldConfigList: [getFieldConfig('a'), getFieldConfig('b')],
-    intentConfigList: [getIntentConfig()],
-    typeConfigList: []
+    intentConfigList: [getIntentConfig()]
   });
 
   it('throws if input is invalid', () => {
@@ -108,6 +107,16 @@ describe('ModelConfiguration', function() {
       const input = getInput();
       input.intentConfigList = [getIntentConfig('X', ['fooBar'])];
       input.fieldConfigList = [getFieldConfig('wubDub')];
+      new ModelConfiguration(input);
+      fail('should throw');
+    } catch (e) {
+      expect(e).to.be.instanceOf(Error);
+    }
+
+    try {
+      const input = getInput();
+      input.intentConfigList = [getIntentConfig('X', ['foo', ['bar', 'wub']])];
+      input.fieldConfigList = [getFieldConfig('foo'), getFieldConfig('bar')];
       new ModelConfiguration(input);
       fail('should throw');
     } catch (e) {

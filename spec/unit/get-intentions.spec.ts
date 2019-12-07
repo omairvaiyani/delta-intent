@@ -89,24 +89,33 @@ describe('getIntentions', function() {
               verbose: false
             });
           if (extra.error) {
-            const { code, message, info } = extra.error;
+            const { modelId, code, message, info, invalidFields } = extra.error;
 
-            try {
-              runScenario();
-              fail(`expected to throw with code: ${code}`);
-            } catch (e) {
-              if (code !== null) {
-                expect(e.code).to.equal(code);
-              }
-              if (message !== null) {
-                expect(e.message).to.equal(message);
-              }
-              if (info) {
-                expect(e.info).to.deep.equal(info);
-              }
+            const response = runScenario();
+            const { error } = response;
+            expect(error).to.be.ok;
+
+            if (modelId !== null) {
+              expect(error.modelId).to.equal(modelId);
+            }
+            if (code !== null) {
+              expect(error.code).to.equal(code);
+            }
+            if (message !== null) {
+              expect(error.message).to.equal(message);
+            }
+            if (info !== null) {
+              expect(error.info).to.deep.equal(info);
+            }
+            if (invalidFields !== null) {
+              expect(error.invalidFields).to.deep.equal(invalidFields);
             }
           } else {
-            expect(runScenario().intentIds.sort()).to.deep.equal(
+            const response = runScenario();
+            // @ts-ignore - intentional type override
+            expect(response.error).to.not.be.ok;
+
+            expect(response.intentIds.sort()).to.deep.equal(
               expectedIntentIds.sort()
             );
           }

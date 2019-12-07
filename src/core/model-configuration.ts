@@ -1,5 +1,5 @@
 import Joi from '@hapi/joi';
-import { ModelId, ModelId_S } from '../interfaces/base-types';
+import { ModelId, ModelId_S, FieldId } from '../interfaces/base-types';
 import {
   IntentConfig,
   IntentConfig_S
@@ -29,10 +29,12 @@ class ModelConfiguration {
     this.typeConfigStore = input.typeConfigStore;
     this._typeConfigList = input.typeConfigList;
 
-    // throw after setting up typeConfigList
-    this.throwIfUnknownTypesInFields(
-      input.fieldConfigList,
-      this.typeConfigList
+    // type config list must be set up before running
+    // these validation methods
+    this.throwIfUnknownTypesInFields(this.fieldConfigList, this.typeConfigList);
+    this.throwIfUnknownFieldsInIntents(
+      this.fieldConfigList,
+      this.intentConfigList
     );
   }
 
@@ -54,6 +56,43 @@ class ModelConfiguration {
         )}`
       );
     }
+  }
+
+  private throwIfUnknownFieldsInIntents(
+    fieldConfigList: FieldConfig[],
+    intentConfigList: IntentConfig[]
+  ) {
+    const availableFields = fieldConfigList.map(f => f.fieldId);
+    intentConfigList
+      .map(iC => iC.matchConfig.items)
+      .reduce((iA, iB) => [...iA, ...iB])
+      .map(item => item.fieldMatch)
+      .forEach(fieldMatch => {
+        let fieldIds: FieldId[] = [];
+        if (Array.isArray(fieldMatch)) {
+          fieldMatch.forEach(fieldMatch => {
+            if (Array.isArray(fieldMatch)) {
+              fieldIds = [...fieldIds, ...fieldMatch];
+            } else {
+              fieldIds.push(fieldMatch);
+            }
+          });
+        } else {
+          fieldIds = [fieldMatch];
+        }
+        const unknownFieldIds = fieldIds.filter(
+          fieldId => !availableFields.includes(fieldId)
+        );
+        if (unknownFieldIds.length) {
+          throw new Error(
+            `ModelConfiguration ${safeId(
+              this.modelId
+            )} is invalid; your intent config list points to unknown fields ${JSON.stringify(
+              unknownFieldIds
+            )}`
+          );
+        }
+      });
   }
 
   /**

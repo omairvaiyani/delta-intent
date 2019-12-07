@@ -8,15 +8,24 @@ import { Sanitiser_S, Sanitiser } from './sanitiser-types';
 const _BaseTypeConfig_S = {
   deltaChecker: DeltaChecker_S.optional(),
   sanitiser: Sanitiser_S.optional(),
-  validator: Validator_S.optional(),
-  objectHasher: ObjectHasher_S.optional()
+  validator: Joi.alternatives()
+    .try(
+      Validator_S,
+      Joi.array()
+        .items(Validator_S)
+        .min(1)
+    )
+    .optional(),
+  objectHasher: ObjectHasher_S.optional(),
+  isRequired: Joi.boolean().optional()
 };
 const BaseTypeConfig_S = Joi.object(_BaseTypeConfig_S);
 interface BaseTypeConfig {
   deltaChecker?: DeltaChecker;
   sanitiser?: Sanitiser;
-  validator?: Validator;
+  validator?: Validator | Validator[];
   objectHasher?: ObjectHasher;
+  isRequired?: boolean;
 }
 
 const TypeConfig_S = Joi.object({

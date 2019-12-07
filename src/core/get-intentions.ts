@@ -3,7 +3,8 @@ import {
   ModelState,
   IntentId,
   InputValue,
-  FieldId
+  FieldId,
+  ModelId
 } from '../interfaces/base-types';
 import {
   FieldDeltaOutcome,
@@ -23,16 +24,23 @@ import {
 } from '../utils/delta-checkers';
 import { BaseTypeConfig, TypeConfig } from '../interfaces/custom-types';
 import { hasProperty, safeId } from '../utils/common';
-import { ErrorCode } from '../interfaces/error-types';
+import { ErrorCode, InvalidFieldValue } from '../interfaces/error-types';
 import { DeltaIntentError, throwIfInvalidShape } from '../utils/validator';
 import {
   GetIntentionsInput,
   GetIntentionsResponse,
   GetIntentionsInput_S,
   FieldModificationData,
-  FieldWithTypeConfigMap
+  FieldWithTypeConfigMap,
+  GetIntentionsError
 } from '../interfaces/get-intentions-types';
-import { isUndefined } from 'util';
+import { isUndefined, isNullOrUndefined } from 'util';
+import {
+  DefaultInvalidValueMessage,
+  ValidatorParams,
+  ValidatorOutcome,
+  Validator
+} from '../interfaces/validator-types';
 
 const getIntentions = function(
   modelConfiguration: ModelConfiguration,
@@ -55,13 +63,19 @@ const getIntentions = function(
     }
 
     throwIfInvalidShape(input, GetIntentionsInput_S);
-
     const {
       typeConfigList,
       fieldConfigList,
       intentConfigList
     } = modelConfiguration;
-    const { existingState, modifiedState } = input;
+    const fieldIds = fieldConfigList.map(f => f.fieldId);
+
+    const { existingState, modifiedState } = getInputWithKnownFieldsOnly(
+      fieldIds,
+      input
+    );
+
+    const isCreate = isUndefined(existingState);
 
     const fieldWithTypeConfigList: FieldWithTypeConfigMap[] = fieldConfigList.map(
       fieldConfig => ({
@@ -99,15 +113,21 @@ const getIntentions = function(
         fMD => fMD.isInModifiedState
       );
       verbose(`validating ${isInModifiedStateFMDList.length} modified fields`);
-      const invalidFields = getInvalidFields(isInModifiedStateFMDList);
+      const invalidFields = getInvalidFields(
+        isCreate,
+        isInModifiedStateFMDList
+      );
       if (invalidFields.length) {
-        throw new DeltaIntentError(
-          ErrorCode.InvalidModifiedState,
-          `Modified state contains invalid fields`,
-          {
-            fieldIds: invalidFields
-          }
-        );
+        return {
+          error: getFailedResponse(
+            modelIdSafe,
+            ErrorCode.InvalidModifiedState,
+            'One or more modified fields did not pass validation',
+            {
+              invalidFields
+            }
+          )
+        };
       }
     }
 
@@ -199,18 +219,64 @@ const getIntentions = function(
         }
       });
 
-    return {
-      intentIds,
-      fieldDeltaOutcomeList
-    };
+    const response = {
+      intentIds
+    } as GetIntentionsResponse;
+
+    if (existingState) {
+      response.fieldDeltaOutcomeList = fieldDeltaOutcomeList;
+    }
+
+    return response;
   } catch (e) {
     if (e instanceof DeltaIntentError) {
-      e.modelId = modelIdSafe;
-      throw e;
+      return {
+        error: getFailedResponse(modelIdSafe, e.code, e.message, {
+          info: e.info
+        })
+      };
     } else {
-      throw new DeltaIntentError(ErrorCode.UnknownError, e.message);
+      return {
+        error: getFailedResponse(
+          modelIdSafe,
+          ErrorCode.UnknownError,
+          `An unknown error occurred within delta-intent; ${e.message}`,
+          {
+            info: {
+              stack: e.stack
+            }
+          }
+        )
+      };
     }
   }
+};
+
+const getFailedResponse = function(
+  modelId: ModelId,
+  code: ErrorCode,
+  message: string,
+  options: {
+    info?: Record<string, any>;
+    invalidFields?: InvalidFieldValue[];
+  } = {}
+): GetIntentionsError {
+  const error = {
+    modelId,
+    code,
+    message,
+    info: options.info,
+    invalidFields: options.invalidFields
+  };
+
+  if (!error.info) {
+    delete error.info;
+  }
+  if (!error.invalidFields) {
+    delete error.invalidFields;
+  }
+
+  return error;
 };
 
 const discernFieldDeltaOutcome = function(
@@ -255,7 +321,7 @@ const discernFieldDeltaOutcome = function(
       });
     }
 
-    if (isDeltaForArray(deltaValues)) {
+    if (isArray || isDeltaForArray(deltaValues)) {
       arrayDelta = generateArrayDelta(deltaValues, delta);
     }
 
@@ -290,12 +356,17 @@ const discernFieldDeltaOutcome = function(
     }
   }
 
-  return {
+  const outcome: FieldDeltaOutcome = {
     fieldId: fieldConfig.fieldId,
     didMatch,
-    delta,
-    arrayDelta
+    delta
   };
+
+  if (arrayDelta) {
+    outcome.arrayDelta = arrayDelta;
+  }
+
+  return outcome;
 };
 
 const isFieldModified = function(
@@ -306,6 +377,31 @@ const isFieldModified = function(
     modifiedState,
     fieldConfig.fieldId
   );
+};
+
+const getInputWithKnownFieldsOnly = (
+  fieldIds: FieldId[],
+  input: GetIntentionsInput
+): GetIntentionsInput => {
+  const { existingState, modifiedState } = input;
+
+  const withoutUnkownKeys = (state: any) => {
+    const _state = { ...state };
+    Object.keys(_state)
+      .filter(key => !fieldIds.includes(key))
+      .forEach(unknownKey => delete _state[unknownKey]);
+    return _state;
+  };
+
+  const _input: GetIntentionsInput = {
+    modifiedState: withoutUnkownKeys(modifiedState)
+  };
+
+  if (existingState) {
+    _input.existingState = withoutUnkownKeys(existingState);
+  }
+
+  return _input;
 };
 
 const getSanitizedInput = function(
@@ -350,6 +446,7 @@ const getFieldModificationData = function(
     fieldConfig,
     typeConfig,
     isArray: !!fieldConfig.isArray,
+    isRequired: !!fieldConfig.isRequired,
     isInModifiedState: hasProperty(states.modified, safeId(fieldId)),
     rawValues: {},
     deltaValues: undefined
@@ -380,38 +477,93 @@ const getFieldModificationData = function(
 };
 
 const getInvalidFields = function(
+  isCreate: boolean,
   fieldModificationList: FieldModificationData[]
-): FieldId[] {
-  const invalidFields: FieldId[] = [];
+): InvalidFieldValue[] {
+  const invalidFields: InvalidFieldValue[] = [];
 
+  const runValidators = (
+    validator: Validator | Validator[],
+    params: ValidatorParams
+  ) =>
+    Array.isArray(validator)
+      ? validator.map(v => v(params))
+      : [validator(params)];
+
+  const isFailedOutcome = (outcome: ValidatorOutcome) =>
+    outcome === false || typeof outcome === 'string';
+
+  const didFailValidation = (outcomes: ValidatorOutcome[]) =>
+    outcomes.some(isFailedOutcome);
+
+  const getReasonFromOutcomes = (outcomes: ValidatorOutcome[]) =>
+    outcomes
+      .filter(isFailedOutcome)
+      .map(o => (typeof o === 'string' ? o : DefaultInvalidValueMessage));
+
+  const simplifyReasons = (reasons: string[]) =>
+    reasons.length === 1 ? reasons[0] : reasons;
   fieldModificationList.forEach(
-    ({ fieldId, typeConfig, isArray, deltaValues }) => {
+    ({ fieldId, typeConfig, isArray, deltaValues, isRequired }) => {
       const { validator } = typeConfig;
       if (validator) {
         const value = deltaValues.modifiedValue;
-        const validatorParams = { modifiedValue: value } as any;
+        const validatorParams = { isCreate, modifiedValue: value } as any;
         if (!isUndefined(deltaValues.existingValue)) {
           validatorParams.existingValue = deltaValues.existingValue;
         }
         let isValid: boolean;
+        let reason: string | string[];
         if (isArray) {
-          // if exists, ensure it's array
-          // and each item is valid,
-          // else skip validation
-          // NOTE: this may need configuration
-          // such as `isRequired` in array validation
-          isValid = isUndefined(value)
-            ? true
-            : Array.isArray(value)
-            ? value.every(v =>
-                validator({ ...validatorParams, modifiedValue: v })
-              )
-            : false;
+          if (isNullOrUndefined(value)) {
+            isValid = !isRequired;
+          } else {
+            if (Array.isArray(value)) {
+              const invalidItems = value
+                .map(modifiedValue =>
+                  runValidators(validator, {
+                    ...validatorParams,
+                    modifiedValue
+                  })
+                )
+                .filter(didFailValidation)
+                .map((outcomes, index) => [
+                  index,
+                  simplifyReasons(getReasonFromOutcomes(outcomes))
+                ]);
+              if (invalidItems.length) {
+                isValid = false;
+                reason = `${invalidItems.length} ${
+                  invalidItems.length === 1 ? 'item' : 'items'
+                } in array failed validation; ${invalidItems
+                  .map(item => `item ${item[0]} failed because '${item[1]}'`)
+                  .join('; ')}`;
+              } else {
+                isValid = true;
+              }
+            } else {
+              isValid = false;
+              reason = `expected array, but value is ${typeof value}`;
+            }
+          }
         } else {
-          isValid = validator(validatorParams);
+          if (isRequired && isNullOrUndefined(value)) {
+            isValid = false;
+            reason = 'required field cannot be empty';
+          } else {
+            const outcomes = runValidators(validator, validatorParams);
+            if (didFailValidation(outcomes)) {
+              const reasons = getReasonFromOutcomes(outcomes);
+              isValid = false;
+              reason = simplifyReasons(reasons);
+            } else {
+              isValid = true;
+            }
+          }
         }
+
         if (!isValid) {
-          invalidFields.push(fieldId);
+          invalidFields.push({ fieldId, value, reason });
         }
       }
     }
@@ -430,6 +582,7 @@ const filterFMDListByMatchConfig = function(
   let matchedFieldModificationList: FieldModificationData[];
   const getFieldModificationData = (fieldId: FieldId): FieldModificationData =>
     fieldModificationList.find(fMD => fMD.fieldId === fieldId);
+
   if (Array.isArray(fieldMatch)) {
     matchedFieldModificationList = [];
     fieldMatch.forEach(f => {
