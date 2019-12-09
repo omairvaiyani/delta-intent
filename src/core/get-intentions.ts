@@ -32,7 +32,8 @@ import {
   GetIntentionsInput_S,
   FieldModificationData,
   FieldWithTypeConfigMap,
-  GetIntentionsError
+  GetIntentionsError,
+  GetIntentionsOptions
 } from '../interfaces/get-intentions-types';
 import { isUndefined, isNullOrUndefined } from 'util';
 import {
@@ -41,11 +42,12 @@ import {
   ValidatorOutcome,
   Validator
 } from '../interfaces/validator-types';
+import { IntentConfig, Operation } from '../interfaces/intent-config-types';
 
 const getIntentions = function(
   modelConfiguration: ModelConfiguration,
   input: GetIntentionsInput,
-  options: { skipValidation?: boolean; debug?: boolean; verbose?: boolean } = {}
+  options: GetIntentionsOptions = {}
 ): GetIntentionsResponse {
   const verbose = (message: any) =>
     options.verbose && console.log(JSON.stringify(message));
@@ -137,9 +139,7 @@ const getIntentions = function(
     debug(`input is ${existingState ? `create` : 'update'}`);
 
     intentConfigList
-      .filter(intentConfig =>
-        intentConfig.isCreate ? !existingState : existingState
-      )
+      .filter(matchIntentConfigByOperationType.bind(null, isCreate))
       .forEach(intentConfig => {
         debug(`checking intent: ${safeId(intentConfig.intentId)}`);
 
@@ -603,9 +603,9 @@ const filterFMDListByMatchConfig = function(
 /**
  * The type `FieldMatch` can allow users to
  * conditionalise the match in a fashion similar
- * to 'AND' / 'OR' operators. This groups those
- * together in a manner that simplifies the
- * matching method.
+ * to 'AND' / 'OR' operators. This method
+ * groups those together in a manner that
+ * simplifies the matching algorithm.
  *
  * 'FDO' = `FieldDeltaOutcome`
  */
@@ -737,6 +737,29 @@ const doesValueMatchExpected = function(
     }[valueMatch.presence];
   }
   return match;
+};
+
+/**
+ * If `intentConfig` specifies a particular
+ * op type, this will match only those;
+ *
+ * i.e. for `Operation.Update`, `isOperationCreate`
+ * must be false on this
+ */
+const matchIntentConfigByOperationType = function(
+  isOperationCreate: boolean,
+  intentConfig: IntentConfig
+): boolean {
+  if (intentConfig.operation) {
+    return (
+      {
+        [Operation.Create]: true,
+        [Operation.Update]: false
+      }[intentConfig.operation] === isOperationCreate
+    );
+  } else {
+    return true;
+  }
 };
 
 export { getIntentions };

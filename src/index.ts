@@ -14,6 +14,8 @@ import {
   FieldDeltaOutcome as _FieldDeltaOutcome
 } from './interfaces/match-config-types';
 
+import { Di } from './api';
+
 namespace DIInterface {
   export interface FieldConfig extends _FieldConfig {}
   export interface IntentConfig extends _IntentConfig {}
@@ -29,4 +31,4 @@ namespace DIInterface {
   export interface FieldDeltaOutcome extends _FieldDeltaOutcome {}
 }
 
-export { ModelConfiguration, TypeConfigStore, getIntentions, DIInterface };
+export { Di, DIInterface };

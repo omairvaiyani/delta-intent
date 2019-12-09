@@ -1,11 +1,11 @@
 import Joi from '@hapi/joi';
 import { expect } from 'chai';
-import { getIntentions } from '../../src/api/get-intentions';
-import { ModelConfiguration } from '../../src/api/model-configuration';
 import { getFieldConfig, getIntentConfig, getTypeConfig } from '../helpers';
 import { profile, purchaseOrder } from './fixtures';
-import { TypeConfigStore } from '../../src/api/type-config-store';
+import { TypeConfigStore } from '../../src/core/type-config-store';
 import { safeId } from '../../src/utils/common';
+import { getIntentions } from '../../src/core/get-intentions';
+import { ModelConfiguration } from '../../src/core/model-configuration';
 import { GetIntentionsResponse_S } from '../../src/interfaces/get-intentions-types';
 
 describe('getIntentions', function() {

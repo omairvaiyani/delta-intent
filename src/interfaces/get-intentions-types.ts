@@ -22,6 +22,12 @@ interface GetIntentionsInput {
   existingState?: ModelState;
 }
 
+interface GetIntentionsOptions {
+  skipValidation?: boolean;
+  debug?: boolean;
+  verbose?: boolean;
+}
+
 const GetIntentionsResponse_S = Joi.object({
   intentIds: Joi.array()
     .items(IntentId_S)
@@ -71,6 +77,7 @@ interface FieldWithTypeConfigMap {
 export { GetIntentionsInput_S, GetIntentionsResponse_S };
 export {
   GetIntentionsInput,
+  GetIntentionsOptions,
   GetIntentionsResponse,
   GetIntentionsError,
   FieldModificationData,
