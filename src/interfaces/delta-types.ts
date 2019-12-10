@@ -6,9 +6,9 @@ const DeltaValues_S = Joi.object({
   existingValue: InputValue_S.optional(),
   modifiedValue: InputValue_S.required()
 });
-interface DeltaValues {
-  existingValue?: InputValue;
-  modifiedValue: InputValue;
+interface DeltaValues<T extends InputValue = InputValue> {
+  existingValue?: T;
+  modifiedValue: T;
 }
 
 const DifferOptions_S = Joi.object({

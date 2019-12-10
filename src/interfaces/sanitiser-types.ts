@@ -7,9 +7,9 @@ const SanitiserOutcome_S = Joi.object({
   sanitisedValue: InputValue_S.optional()
 });
 
-interface SanitiserOutcome extends Joi.extractType<typeof SanitiserOutcome_S> {
+interface SanitiserOutcome {
   didSanitise: boolean;
-  sanitisedValue: InputValue;
+  sanitisedValue?: InputValue;
 }
 
 const Sanitiser_S = Joi.func().arity(1);

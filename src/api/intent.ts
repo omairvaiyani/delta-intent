@@ -6,19 +6,22 @@ import {
   InternalPolicy
 } from '../interfaces/intent-config-types';
 import { MatchConfigItem } from '../interfaces/match-config-types';
-import { MatchApi, DefinedMatchApi } from './match';
+import { DefinedMatchApi } from './match';
 import { IncompatibleConfigError } from './error';
 
 export class IntentApi {
-  private intentId: IntentId;
-
+  private _intentId: IntentId;
   private _operation = Operation.Any;
   private _externalPolicy: ExternalPolicy;
   private _internalPolicy: InternalPolicy;
   private _items: MatchConfigItem[];
 
   constructor(intentId: IntentId) {
-    this.intentId = intentId;
+    this._intentId = intentId;
+  }
+
+  public get typeId() {
+    return this._intentId;
   }
 
   public create(): IntentApi {
@@ -76,7 +79,7 @@ export class IntentApi {
 
   public toConfig(): IntentConfig {
     const intentConfig: IntentConfig = {
-      intentId: this.intentId,
+      intentId: this._intentId,
       operation: this._operation,
       externalPolicy: this._externalPolicy,
       internalPolicy: this._internalPolicy,

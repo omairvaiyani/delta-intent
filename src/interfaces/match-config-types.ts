@@ -1,6 +1,5 @@
 import Joi from '@hapi/joi';
 import { FieldId, InputValue, FieldId_S, InputValue_S } from './base-types';
-import { Validator_S } from './validator-types';
 import { DeltaValues, Delta, Delta_S } from './delta-types';
 import { DifferOptions } from '../utils/diff';
 import { enumValues } from '../utils/common';
@@ -24,14 +23,16 @@ const DeltaChecker_S = Joi.func()
   .minArity(1)
   .maxArity(2);
 
-type DeltaChecker = (
-  deltaValues: DeltaValues,
+type DeltaChecker<T extends InputValue = InputValue> = (
+  deltaValues: DeltaValues<T>,
   options?: { differOptions?: DifferOptions }
 ) => Delta;
 
 const ManualMatcher_S = Joi.func().arity(1);
 
-type ManualMatcher = (values: DeltaValues) => boolean;
+type ManualMatcher<T extends InputValue = InputValue> = (
+  values: DeltaValues<T>
+) => boolean;
 
 enum ValueMatchPresence {
   Optional = 'optional',
@@ -46,8 +47,7 @@ const ValueMatch_S = Joi.object({
   value: InputValue_S.optional(),
   manual: ManualMatcher_S.optional()
 });
-
-interface ValueMatch extends Joi.extractType<typeof ValueMatch_S> {
+interface ValueMatch {
   presence?: ValueMatchPresence;
   value?: InputValue;
   manual?: ManualMatcher;

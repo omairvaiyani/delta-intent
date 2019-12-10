@@ -5,16 +5,21 @@ import { FieldConfig } from '../interfaces/field-config-types';
 import { TypeId, FieldId } from '../interfaces/base-types';
 
 export class FieldApi {
-  private fieldId: FieldId;
+  private _fieldId: FieldId;
   private _typeId?: TypeId;
   private _required?: boolean;
+  private _immutable?: boolean;
   private _array?: boolean;
   private _validators?: Validator[];
   private _sanitiser?: Sanitiser;
   private _hasher?: ObjectHasher;
 
   constructor(fieldId: FieldId) {
-    this.fieldId = fieldId;
+    this._fieldId = fieldId;
+  }
+
+  public get fieldId() {
+    return this._fieldId;
   }
 
   public type(typeId: TypeId): FieldApi {
@@ -30,8 +35,21 @@ export class FieldApi {
     return this;
   }
 
+  public immutable(): FieldApi {
+    this._immutable = true;
+    return this;
+  }
+
   public array(): FieldApi {
     this._array = true;
+    return this;
+  }
+
+  public validator(validator: Validator): FieldApi {
+    if (!this._validators) {
+      this._validators = [];
+    }
+    this._validators.push(validator);
     return this;
   }
 
@@ -42,6 +60,7 @@ export class FieldApi {
     this._sanitiser = sanitiser;
     return this;
   }
+
   public hasher(hasher: ObjectHasher): FieldApi {
     if (this.hasher) {
       throw new Error('You cannot set more than one hasher per Field');
@@ -52,7 +71,7 @@ export class FieldApi {
 
   public toConfig(): FieldConfig {
     const fieldConfig: FieldConfig = {
-      fieldId: this.fieldId
+      fieldId: this._fieldId
     };
 
     const {
@@ -61,7 +80,8 @@ export class FieldApi {
       _sanitiser,
       _hasher,
       _array,
-      _required
+      _required,
+      _immutable
     } = this;
     if (_typeId) {
       fieldConfig.typeId = _typeId;
@@ -78,6 +98,9 @@ export class FieldApi {
     }
     if (typeof _required === 'boolean') {
       fieldConfig.isRequired = _required;
+    }
+    if (typeof _immutable === 'boolean') {
+      fieldConfig.isImmutable = _immutable;
     }
     if (typeof _array === 'boolean') {
       fieldConfig.isArray = _array;

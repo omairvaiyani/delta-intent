@@ -24,7 +24,7 @@ import {
 } from '../utils/delta-checkers';
 import { BaseTypeConfig, TypeConfig } from '../interfaces/custom-types';
 import { hasProperty, safeId } from '../utils/common';
-import { ErrorCode, InvalidFieldValue } from '../interfaces/error-types';
+import { InvalidFieldValue } from '../interfaces/error-types';
 import { DeltaIntentError, throwIfInvalidShape } from '../utils/validator';
 import {
   GetIntentionsInput,
@@ -49,7 +49,7 @@ import {
   ExternalPolicy,
   InternalPolicy
 } from '../interfaces/intent-config-types';
-import { ErrorMessage } from './errors';
+import { ErrorMessage, ErrorCode } from './errors';
 
 const getIntentions = function(
   modelConfiguration: ModelConfiguration,
@@ -67,7 +67,7 @@ const getIntentions = function(
     if (modelConfiguration instanceof ModelConfiguration !== true) {
       throw new DeltaIntentError(
         ErrorCode.InvalidConfiguration,
-        'first argument is not an instance of ModelConfiguration'
+        ErrorMessage.UnexpectedType('ModelConfiguration', modelConfiguration)
       );
     }
 
@@ -345,7 +345,7 @@ const getIntentions = function(
 
 const getFailedResponse = function(
   modelId: ModelId,
-  code: ErrorCode,
+  code: string,
   message: string,
   options: {
     info?: Record<string, any>;

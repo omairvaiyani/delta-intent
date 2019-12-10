@@ -1,4 +1,10 @@
-export const ErrorMessage = {
+enum ErrorCode {
+  InvalidConfiguration = 'InvalidConfiguration',
+  InvalidModifiedState = 'InvalidModifiedState',
+  UnknownError = 'UnknownError'
+}
+
+const ErrorMessage = {
   RequiredFieldMissing: 'required field cannot be empty',
   ImmutableFieldChanged: 'immutable field cannot be changed',
   MultipleInvalidItems: (
@@ -10,8 +16,10 @@ export const ErrorMessage = {
       .map(item => `item ${item.key} failed because '${item.reason}'`)
       .join('; ')}`;
   },
-  InvalidModifiedState: 'One or more modified fields did not pass validation',
+  InvalidModifiedState: 'one or more modified fields did not pass validation',
   UnexpectedType: (expected: string, value: any) => {
     return `unexpected type, expected ${expected}, but value is ${typeof value}`;
   }
 };
+
+export { ErrorCode, ErrorMessage };

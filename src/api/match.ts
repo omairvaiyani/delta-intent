@@ -3,18 +3,16 @@ import {
   ValueMatchPresence,
   ValueMatch,
   DeltaCheck,
-  DeltaChecker,
   ManualMatcher,
   MatchConfigItem
 } from '../interfaces/match-config-types';
-import { FieldId } from '../interfaces/base-types';
-import { IncompatibleConfigError } from './error';
+import { FieldId, InputValue } from '../interfaces/base-types';
 
 interface DefinedMatchApi {
   toConfig: () => MatchConfigItem;
 }
 
-class MatchApi {
+class MatchApi<T extends InputValue = InputValue> {
   private fieldMatch: FieldMatch;
   private _existingState: ValueMatch;
   private _modifiedState: ValueMatch;
@@ -45,29 +43,30 @@ class MatchApi {
     return postValueMatchOptions(this);
   }
 
-  public is(valueMatcher: any | ManualMatcher) {
+  public is(value: T) {
     const modifiedState = this.setupModifiedStateMatch();
-    if (typeof valueMatcher === 'function') {
-      modifiedState.manual = valueMatcher;
-    } else {
-      modifiedState.value = valueMatcher;
-    }
+    modifiedState.value = value;
 
     this._deltaCheck = true;
 
     return {
       ...postValueMatchOptions(this),
 
-      from: (valueMatcher: any | ManualMatcher) => {
+      from: (value: T) => {
         const existingState = this.setupExistingStateMatch();
-        if (typeof valueMatcher === 'function') {
-          existingState.manual = valueMatcher;
-        } else {
-          existingState.value = valueMatcher;
-        }
+        existingState.value = value;
         return postValueMatchOptions(this);
       }
     };
+  }
+
+  public matcher(valueMatcher: ManualMatcher<T>) {
+    const modifiedState = this.setupModifiedStateMatch();
+    modifiedState.manual = valueMatcher;
+
+    this._deltaCheck = true;
+
+    return postValueMatchOptions(this);
   }
 
   public toConfig(): MatchConfigItem {

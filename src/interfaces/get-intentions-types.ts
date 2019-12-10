@@ -8,10 +8,10 @@ import {
   ModelId
 } from './base-types';
 import { FieldDeltaOutcome_S, FieldDeltaOutcome } from './match-config-types';
-import { BaseTypeConfig, TypeConfig } from './custom-types';
+import { BaseTypeConfig } from './custom-types';
 import { FieldConfig } from './field-config-types';
 import { DeltaValues } from './delta-types';
-import { InvalidFieldValue, ErrorCode } from './error-types';
+import { InvalidFieldValue } from './error-types';
 
 const GetIntentionsInput_S = Joi.object({
   modifiedState: ModelState_S.required(),
@@ -51,7 +51,7 @@ interface GetIntentionsResponse {
 
 interface GetIntentionsError {
   modelId: ModelId;
-  code: ErrorCode;
+  code: string;
   message: string;
   invalidFields?: InvalidFieldValue[];
   info?: Record<string, any>;
