@@ -40,7 +40,8 @@ import {
   DefaultInvalidValueMessage,
   ValidatorParams,
   ValidatorOutcome,
-  Validator
+  Validator,
+  ValidatorBaseParams
 } from '../interfaces/validator-types';
 import { IntentConfig, Operation } from '../interfaces/intent-config-types';
 
@@ -94,6 +95,16 @@ const getIntentions = function(
       existingState
     );
 
+    const validatorBaseParams: ValidatorBaseParams = {
+      modifiedState,
+      existingState,
+      isCreate
+    };
+
+    if (input.context) {
+      validatorBaseParams.context = input.context;
+    }
+
     const fieldModificationList = fieldConfigList.map(fieldConfig =>
       getFieldModificationData(
         fieldConfig,
@@ -116,7 +127,7 @@ const getIntentions = function(
       );
       verbose(`validating ${isInModifiedStateFMDList.length} modified fields`);
       const invalidFields = getInvalidFields(
-        isCreate,
+        validatorBaseParams,
         isInModifiedStateFMDList
       );
       if (invalidFields.length) {
@@ -477,7 +488,7 @@ const getFieldModificationData = function(
 };
 
 const getInvalidFields = function(
-  isCreate: boolean,
+  baseParams: ValidatorBaseParams,
   fieldModificationList: FieldModificationData[]
 ): InvalidFieldValue[] {
   const invalidFields: InvalidFieldValue[] = [];
@@ -508,7 +519,10 @@ const getInvalidFields = function(
       const { validator } = typeConfig;
       if (validator) {
         const value = deltaValues.modifiedValue;
-        const validatorParams = { isCreate, modifiedValue: value } as any;
+        const validatorParams: ValidatorParams = {
+          ...baseParams,
+          modifiedValue: value
+        };
         if (!isUndefined(deltaValues.existingValue)) {
           validatorParams.existingValue = deltaValues.existingValue;
         }

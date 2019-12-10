@@ -1,5 +1,5 @@
 import { TypeConfig } from '../../../src/interfaces/custom-types';
-import { ModelConfiguration } from '../../../src/api/model-configuration';
+import { ModelConfiguration } from '../../../src/core/model-configuration';
 import { IntentId } from '../../../src/interfaces/base-types';
 import {
   GetIntentionsInput,

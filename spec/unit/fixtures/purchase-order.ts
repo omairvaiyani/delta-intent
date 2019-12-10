@@ -1,5 +1,7 @@
 import { TestFixture } from './interface';
 import { ErrorCode } from '../../../src/interfaces/error-types';
+import { ValueMatchPresence } from '../../../src/interfaces/match-config-types';
+import { Operation } from '../../../src/interfaces/intent-config-types';
 
 export const fixture: TestFixture = {
   typeConfigList: [
@@ -72,14 +74,14 @@ export const fixture: TestFixture = {
     intentConfigList: [
       {
         intentId: 'CreateOrder',
-        isCreate: true,
+        operation: Operation.Create,
         matchConfig: {
           items: [
             {
               fieldMatch: ['productId', 'email', 'card'],
               deltaMatch: {
                 modifiedState: {
-                  presence: 'required'
+                  presence: ValueMatchPresence.Required
                 }
               }
             },
@@ -96,7 +98,7 @@ export const fixture: TestFixture = {
       },
       {
         intentId: 'CompleteOrder',
-        isCreate: false,
+        operation: Operation.Update,
         matchConfig: {
           items: [
             {
@@ -115,7 +117,7 @@ export const fixture: TestFixture = {
       },
       {
         intentId: 'CancelOrder',
-        isCreate: false,
+        operation: Operation.Update,
         matchConfig: {
           items: [
             {

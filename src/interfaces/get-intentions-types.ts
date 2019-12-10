@@ -15,11 +15,15 @@ import { InvalidFieldValue, ErrorCode } from './error-types';
 
 const GetIntentionsInput_S = Joi.object({
   modifiedState: ModelState_S.required(),
-  existingState: ModelState_S.optional()
+  existingState: ModelState_S.optional(),
+  context: Joi.object()
+    .unknown(true)
+    .optional()
 });
 interface GetIntentionsInput {
   modifiedState: ModelState;
   existingState?: ModelState;
+  context?: Record<string, any>;
 }
 
 interface GetIntentionsOptions {

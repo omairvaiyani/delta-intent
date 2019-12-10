@@ -1,6 +1,8 @@
 import { TestFixture } from './interface';
 import { ErrorCode } from '../../../src/interfaces/error-types';
 import { DefaultInvalidValueMessage } from '../../../src/interfaces/validator-types';
+import { ValueMatchPresence } from '../../../src/interfaces/match-config-types';
+import { Operation } from '../../../src/interfaces/intent-config-types';
 
 export const fixture: TestFixture = {
   typeConfigList: [
@@ -73,14 +75,14 @@ export const fixture: TestFixture = {
     intentConfigList: [
       {
         intentId: 'Register',
-        isCreate: true,
+        operation: Operation.Create,
         matchConfig: {
           items: [
             {
               fieldMatch: ['name', 'age', 'email'],
               deltaMatch: {
                 modifiedState: {
-                  presence: 'required'
+                  presence: ValueMatchPresence.Required
                 }
               }
             },
@@ -88,7 +90,7 @@ export const fixture: TestFixture = {
               fieldMatch: 'profilePicture',
               deltaMatch: {
                 modifiedState: {
-                  presence: 'optional'
+                  presence: ValueMatchPresence.Optional
                 }
               }
             },
@@ -96,7 +98,7 @@ export const fixture: TestFixture = {
               fieldMatch: 'badges',
               deltaMatch: {
                 modifiedState: {
-                  presence: 'forbidden'
+                  presence: ValueMatchPresence.Forbidden
                 }
               }
             }
@@ -105,7 +107,7 @@ export const fixture: TestFixture = {
       },
       {
         intentId: 'UpdateBio',
-        isCreate: false,
+        operation: Operation.Update,
         matchConfig: {
           items: [
             {
@@ -119,7 +121,7 @@ export const fixture: TestFixture = {
       },
       {
         intentId: 'UpdateEmail',
-        isCreate: false,
+        operation: Operation.Update,
         matchConfig: {
           items: [
             {
@@ -133,7 +135,7 @@ export const fixture: TestFixture = {
       },
       {
         intentId: 'AddBadges',
-        isCreate: false,
+        operation: Operation.Update,
         matchConfig: {
           items: [
             {
@@ -151,7 +153,7 @@ export const fixture: TestFixture = {
       },
       {
         intentId: 'RemoveBadges',
-        isCreate: false,
+        operation: Operation.Update,
         matchConfig: {
           items: [
             {

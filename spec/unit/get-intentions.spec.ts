@@ -74,8 +74,8 @@ describe('getIntentions', function() {
             typeConfigStore
           });
         } catch (e) {
-          console.error(e);
-          throw new Error(`Fixture setup failed`);
+          console.error(`fixture setup failed`, e);
+          process.exit(1);
         }
       });
 
