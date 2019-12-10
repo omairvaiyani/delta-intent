@@ -43,7 +43,12 @@ import {
   Validator,
   ValidatorBaseParams
 } from '../interfaces/validator-types';
-import { IntentConfig, Operation } from '../interfaces/intent-config-types';
+import {
+  IntentConfig,
+  Operation,
+  ExternalPolicy,
+  InternalPolicy
+} from '../interfaces/intent-config-types';
 import { ErrorMessage } from './errors';
 
 const getIntentions = function(
@@ -127,14 +132,9 @@ const getIntentions = function(
     if (options.skipValidation) {
       verbose('opted to skip validation');
     } else {
-      /* const isInModifiedStateFMDList = fieldModificationList.filter(
-        fMD => fMD.isInModifiedState
-      );
-      verbose(`validating ${isInModifiedStateFMDList.length} modified fields`); */
       const invalidFields = getInvalidFields(
         validatorBaseParams,
         fieldModificationList
-        /* isInModifiedStateFMDList */
       );
       if (invalidFields.length) {
         return {
@@ -150,15 +150,76 @@ const getIntentions = function(
       }
     }
 
-    const intentIds: IntentId[] = [];
+    const preliminarilyMatchedIntents: IntentConfig[] = [];
+
     let fieldDeltaOutcomeList: FieldDeltaOutcome[] = [];
 
     debug(`input is ${existingState ? `create` : 'update'}`);
+
+    const isInModifedStateFMDList = fieldModificationList.filter(
+      fMD => fMD.isInModifiedState
+    );
+    const isInModifiedStateFieldIds = isInModifedStateFMDList.map(
+      fMD => fMD.fieldId
+    );
 
     intentConfigList
       .filter(matchIntentConfigByOperationType.bind(null, isCreate))
       .forEach(intentConfig => {
         debug(`checking intent: ${safeId(intentConfig.intentId)}`);
+
+        const { internalPolicy } = intentConfig;
+        const isStrict = internalPolicy === InternalPolicy.Strict;
+        if (isStrict) {
+          const acceptableFMDList = intentConfig.matchConfig.items
+            .map(matchConfigItem =>
+              filterFMDListByMatchConfig(
+                matchConfigItem.fieldMatch,
+                fieldModificationList
+              )
+            )
+            .reduce((a, b) => a.concat(b), []);
+          const acceptableFieldIds = acceptableFMDList.map(fMD => fMD.fieldId);
+          const unacceptableFieldIds = isInModifiedStateFieldIds.filter(
+            fieldId => !acceptableFieldIds.includes(fieldId)
+          );
+          if (unacceptableFieldIds.length) {
+            verbose(
+              `will not match due to strict policy and unaccetpable fields found: ${unacceptableFieldIds}`
+            );
+            return false;
+          } else if (
+            isInModifiedStateFieldIds.length < acceptableFieldIds.length
+          ) {
+            const optionalFieldIds = intentConfig.matchConfig.items
+              .filter(
+                matchConfigItem =>
+                  matchConfigItem.deltaMatch.modifiedState &&
+                  matchConfigItem.deltaMatch.modifiedState.presence ===
+                    ValueMatchPresence.Optional
+              )
+              .map(matchConfigItem =>
+                filterFMDListByMatchConfig(
+                  matchConfigItem.fieldMatch,
+                  fieldModificationList
+                )
+              )
+              .reduce((a, b) => a.concat(b), [])
+              .map(fMD => fMD.fieldId);
+
+            const missingFieldIds = acceptableFMDList.filter(
+              fMD =>
+                !fMD.isInModifiedState &&
+                !optionalFieldIds.includes(fMD.fieldId)
+            );
+            if (missingFieldIds.length) {
+              verbose(
+                `will not match due to strict policy and missing fields: ${missingFieldIds}`
+              );
+              return false;
+            }
+          }
+        }
 
         const isIntent = intentConfig.matchConfig.items.every(
           matchConfigItem => {
@@ -231,10 +292,23 @@ const getIntentions = function(
         );
 
         if (isIntent) {
-          intentIds.push(intentConfig.intentId);
-          verbose(`total ${intentIds.length} intents matched so far`);
+          preliminarilyMatchedIntents.push(intentConfig);
+          verbose(
+            `total ${preliminarilyMatchedIntents.length} intents matched so far`
+          );
         }
       });
+
+    // if more than one, filter out exclusives
+    const intentIds =
+      preliminarilyMatchedIntents.length === 1
+        ? [preliminarilyMatchedIntents[0].intentId]
+        : preliminarilyMatchedIntents
+            .filter(
+              intentConfig =>
+                intentConfig.externalPolicy === ExternalPolicy.Inclusive
+            )
+            .map(iC => iC.intentId);
 
     const response = {
       intentIds
@@ -805,7 +879,8 @@ const matchIntentConfigByOperationType = function(
     return (
       {
         [Operation.Create]: true,
-        [Operation.Update]: false
+        [Operation.Update]: false,
+        [Operation.Any]: isOperationCreate
       }[intentConfig.operation] === isOperationCreate
     );
   } else {

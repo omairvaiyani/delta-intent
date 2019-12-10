@@ -1,7 +1,11 @@
 import { TestFixture } from './interface';
 import { ErrorCode } from '../../../src/interfaces/error-types';
 import { ValueMatchPresence } from '../../../src/interfaces/match-config-types';
-import { Operation } from '../../../src/interfaces/intent-config-types';
+import {
+  Operation,
+  ExternalPolicy,
+  InternalPolicy
+} from '../../../src/interfaces/intent-config-types';
 import { ErrorMessage } from '../../../src/core/errors';
 
 export const fixture: TestFixture = {
@@ -88,12 +92,17 @@ export const fixture: TestFixture = {
           }
           return true;
         }
+      },
+      {
+        fieldId: 'closeDate'
       }
     ],
     intentConfigList: [
       {
         intentId: 'NewClaim',
         operation: Operation.Create,
+        externalPolicy: ExternalPolicy.Inclusive,
+        internalPolicy: InternalPolicy.Strict,
         matchConfig: {
           items: [
             {
@@ -129,6 +138,43 @@ export const fixture: TestFixture = {
             }
           ]
         }
+      },
+      {
+        intentId: 'AddInsurance',
+        operation: Operation.Any,
+        externalPolicy: ExternalPolicy.Inclusive,
+        internalPolicy: InternalPolicy.Relaxed,
+        matchConfig: {
+          items: [
+            {
+              fieldMatch: 'hasInsurance',
+              deltaMatch: {
+                modifiedState: {
+                  value: true
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        intentId: 'ApproveClaim',
+        operation: Operation.Update,
+        externalPolicy: ExternalPolicy.Exclusive,
+        internalPolicy: InternalPolicy.Strict,
+        matchConfig: {
+          items: [
+            {
+              fieldMatch: 'claimStatus',
+              deltaMatch: {
+                deltaCheck: true,
+                modifiedState: {
+                  value: 'approved'
+                }
+              }
+            }
+          ]
+        }
       }
     ]
   },
@@ -145,6 +191,98 @@ export const fixture: TestFixture = {
           description: 'Ran into painted wall',
           claimStatus: 'filed'
         }
+      }
+    ],
+    [
+      ['ApproveClaim'],
+      {
+        existingState: {
+          claimId: '1',
+          injuredParty: 'Wile e Coyote',
+          defendant: 'Road Runner',
+          accidentType: 'PersonalInjury',
+          hasInsurance: true,
+          description: 'Ran into painted wall',
+          claimStatus: 'filed'
+        },
+        modifiedState: {
+          claimStatus: 'approved'
+        }
+      },
+      {
+        description: 'exclusive policy does not omit singly matched intent'
+      }
+    ],
+    [
+      ['AddInsurance'],
+      {
+        existingState: {
+          claimId: '1',
+          injuredParty: 'Wile e Coyote',
+          defendant: 'Road Runner',
+          accidentType: 'PersonalInjury',
+          hasInsurance: false,
+          description: 'Ran into painted wall',
+          claimStatus: 'filed'
+        },
+        modifiedState: {
+          claimStatus: 'approved',
+          hasInsurance: true
+        }
+      },
+      {
+        description: 'exclusive policy omits intent where others matched'
+      }
+    ],
+    [
+      ['NewClaim', 'AddInsurance'],
+      {
+        modifiedState: {
+          claimId: '1',
+          injuredParty: 'Wile e Coyote',
+          defendant: 'Road Runner',
+          accidentType: 'PersonalInjury',
+          hasInsurance: true,
+          description: 'Ran into painted wall',
+          claimStatus: 'filed'
+        }
+      },
+      {
+        description: 'multiple mixed operation intents with inclusive policy'
+      }
+    ],
+    [
+      [],
+      {
+        modifiedState: {
+          claimId: '1',
+          injuredParty: 'Wile e Coyote',
+          defendant: 'Road Runner',
+          accidentType: 'PersonalInjury',
+          hasInsurance: false,
+          description: 'Ran into painted wall',
+          claimStatus: 'filed',
+          closeDate: new Date().toISOString()
+        }
+      },
+      {
+        description: 'omits strict intent when given unexpected field'
+      }
+    ],
+    [
+      ['NewClaim'],
+      {
+        modifiedState: {
+          claimId: '1',
+          injuredParty: 'Wile e Coyote',
+          defendant: 'Road Runner',
+          accidentType: 'PersonalInjury',
+          hasInsurance: false,
+          claimStatus: 'filed'
+        }
+      },
+      {
+        description: 'maintain strict intent when missing optional field'
       }
     ],
     [
