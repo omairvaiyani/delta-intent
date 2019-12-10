@@ -1,8 +1,8 @@
 import { TestFixture } from './interface';
-import { ErrorCode } from '../../../src/interfaces/error-types';
 import { DefaultInvalidValueMessage } from '../../../src/interfaces/validator-types';
 import { ValueMatchPresence } from '../../../src/interfaces/match-config-types';
 import { Operation } from '../../../src/interfaces/intent-config-types';
+import { ErrorCode, ErrorMessage } from '../../../src/core/errors';
 
 export const fixture: TestFixture = {
   typeConfigList: [
@@ -178,8 +178,7 @@ export const fixture: TestFixture = {
         modifiedState: {
           name: 'Scooby Doo',
           age: 10,
-          email: 'scooby.doo@mysteries.cnn',
-          foO: 'baz'
+          email: 'scooby.doo@mysteries.cnn'
         }
       }
     ],
@@ -194,6 +193,32 @@ export const fixture: TestFixture = {
             {
               icon: 'star',
               label: 'premium'
+            }
+          ]
+        }
+      }
+    ],
+    [
+      [],
+      {
+        modifiedState: {
+          name: 'Scooby Doo',
+          age: 10,
+          email: 'scooby.doo@mysteries.cnn',
+          foo: 'bar'
+        }
+      },
+      {
+        description: 'returns error if unknown field is passed in',
+        error: {
+          modelId: null,
+          code: ErrorCode.UnknownError,
+          message: ErrorMessage.InvalidModifiedState,
+          invalidFields: [
+            {
+              fieldId: 'foo',
+              value: 'bar',
+              reason: ErrorMessage.UnknownFieldInState
             }
           ]
         }

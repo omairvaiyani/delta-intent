@@ -1,5 +1,3 @@
-import 'joi-extract-type';
-
 import { FieldId, IntentId, TypeId } from '../../src/interfaces/base-types';
 import { FieldConfig } from '../../src/interfaces/field-config-types';
 import {

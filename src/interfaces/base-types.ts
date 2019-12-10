@@ -1,17 +1,17 @@
 import Joi from '@hapi/joi';
 
 const InputValue_S = Joi.any();
-const ModelId_S = Joi.alternatives().try([
+const ModelId_S = Joi.alternatives().try(
   Joi.string().min(1),
   Joi.number(),
   Joi.symbol()
-]);
-const IntentId_S = Joi.alternatives().try([
+);
+const IntentId_S = Joi.alternatives().try(
   Joi.string().min(1),
   Joi.number(),
   Joi.symbol()
-]);
-const FieldId_S = Joi.alternatives().try([Joi.string().min(1), Joi.number()]);
+);
+const FieldId_S = Joi.alternatives().try(Joi.string().min(1), Joi.number());
 const TypeId_S = Joi.string().min(1);
 const ModelState_S = Joi.object().pattern(FieldId_S, InputValue_S);
 const DefaultValueType_S = Joi.string().valid(

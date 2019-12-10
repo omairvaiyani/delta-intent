@@ -4,19 +4,19 @@ import { DeltaValues, Delta, Delta_S } from './delta-types';
 import { DifferOptions } from '../utils/diff';
 import { enumValues } from '../utils/common';
 
-const FieldMatch_S = Joi.alternatives().try([
+const FieldMatch_S = Joi.alternatives().try(
   FieldId_S,
   Joi.array()
     .items(
-      Joi.alternatives().try([
+      Joi.alternatives().try(
         FieldId_S,
         Joi.array()
           .items(FieldId_S)
           .min(1)
-      ])
+      )
     )
     .min(1)
-]);
+);
 type FieldMatch = FieldId | Array<FieldId | FieldId[]>;
 
 const DeltaChecker_S = Joi.func()
@@ -56,13 +56,13 @@ interface ValueMatch {
 const DeltaCheckConfig_S = Joi.object({
   arrayChanges: Joi.object({
     added: Joi.alternatives()
-      .try([Joi.boolean(), Joi.number()])
+      .try(Joi.boolean(), Joi.number())
       .optional(),
     removed: Joi.alternatives()
-      .try([Joi.boolean(), Joi.number()])
+      .try(Joi.boolean(), Joi.number())
       .optional(),
     moved: Joi.alternatives()
-      .try([Joi.boolean(), Joi.number()])
+      .try(Joi.boolean(), Joi.number())
       .optional()
   })
 });
@@ -74,11 +74,11 @@ interface DeltaCheckConfig {
   };
 }
 
-const DeltaCheck_S = Joi.alternatives().try([
+const DeltaCheck_S = Joi.alternatives().try(
   Joi.boolean(),
   DeltaCheckConfig_S,
   DeltaChecker_S
-]);
+);
 
 type DeltaCheck = boolean | DeltaCheckConfig | DeltaChecker;
 

@@ -41,8 +41,7 @@
     "typescript": "3.7.2"
   },
   "dependencies": {
-    "@hapi/hoek": "^8.5.0",
-    "@hapi/joi": "^16.1.8",
+    "@hapi/joi": "15.1.1",
     "jsondiffpatch": "0.3.11"
   }
 }

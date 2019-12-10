@@ -1,12 +1,11 @@
 import { TestFixture } from './interface';
-import { ErrorCode } from '../../../src/interfaces/error-types';
 import { ValueMatchPresence } from '../../../src/interfaces/match-config-types';
 import {
   Operation,
   ExternalPolicy,
   InternalPolicy
 } from '../../../src/interfaces/intent-config-types';
-import { ErrorMessage } from '../../../src/core/errors';
+import { ErrorMessage, ErrorCode } from '../../../src/core/errors';
 
 export const fixture: TestFixture = {
   typeConfigList: [

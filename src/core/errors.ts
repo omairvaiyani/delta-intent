@@ -19,7 +19,8 @@ const ErrorMessage = {
   InvalidModifiedState: 'one or more modified fields did not pass validation',
   UnexpectedType: (expected: string, value: any) => {
     return `unexpected type, expected ${expected}, but value is ${typeof value}`;
-  }
+  },
+  UnknownFieldInState: 'unknown field'
 };
 
 export { ErrorCode, ErrorMessage };
