@@ -7,6 +7,7 @@ const Validator_S = Joi.func().arity(1);
 interface ValidatorBaseParams {
   isCreate: boolean;
   modifiedState: ModelState;
+  postState: ModelState;
   existingState?: ModelState;
   context?: Record<string, any>;
 }

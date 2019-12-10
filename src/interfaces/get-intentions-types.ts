@@ -63,6 +63,7 @@ interface FieldModificationData {
   typeConfig: BaseTypeConfig;
   isArray: boolean;
   isRequired: boolean;
+  isImmutable: boolean;
   isInModifiedState: boolean;
   rawValues: {
     modified?: any;

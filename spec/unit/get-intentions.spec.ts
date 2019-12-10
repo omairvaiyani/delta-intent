@@ -1,7 +1,7 @@
 import Joi from '@hapi/joi';
 import { expect } from 'chai';
 import { getFieldConfig, getIntentConfig, getTypeConfig } from '../helpers';
-import { profile, purchaseOrder } from './fixtures';
+import { profile, purchaseOrder, accidentClaim } from './fixtures';
 import { TypeConfigStore } from '../../src/core/type-config-store';
 import { safeId } from '../../src/utils/common';
 import { getIntentions } from '../../src/core/get-intentions';
@@ -53,7 +53,7 @@ describe('getIntentions', function() {
     expect(error).to.not.be.ok;
   });
 
-  const fixtures = [profile, purchaseOrder];
+  const fixtures = [profile, purchaseOrder, accidentClaim];
   fixtures.forEach(fixture => {
     let typeConfigStore: TypeConfigStore;
     let modelConfiguration: ModelConfiguration;
@@ -112,8 +112,11 @@ describe('getIntentions', function() {
             }
           } else {
             const response = runScenario();
-            // @ts-ignore - intentional type override
-            expect(response.error).to.not.be.ok;
+
+            expect(
+              response.error,
+              response.error && JSON.stringify(response.error)
+            ).to.not.be.ok;
 
             expect(response.intentIds.sort()).to.deep.equal(
               expectedIntentIds.sort()

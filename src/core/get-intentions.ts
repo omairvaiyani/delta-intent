@@ -44,6 +44,7 @@ import {
   ValidatorBaseParams
 } from '../interfaces/validator-types';
 import { IntentConfig, Operation } from '../interfaces/intent-config-types';
+import { ErrorMessage } from './errors';
 
 const getIntentions = function(
   modelConfiguration: ModelConfiguration,
@@ -98,6 +99,10 @@ const getIntentions = function(
     const validatorBaseParams: ValidatorBaseParams = {
       modifiedState,
       existingState,
+      postState: {
+        ...(existingState || {}),
+        ...modifiedState
+      },
       isCreate
     };
 
@@ -122,20 +127,21 @@ const getIntentions = function(
     if (options.skipValidation) {
       verbose('opted to skip validation');
     } else {
-      const isInModifiedStateFMDList = fieldModificationList.filter(
+      /* const isInModifiedStateFMDList = fieldModificationList.filter(
         fMD => fMD.isInModifiedState
       );
-      verbose(`validating ${isInModifiedStateFMDList.length} modified fields`);
+      verbose(`validating ${isInModifiedStateFMDList.length} modified fields`); */
       const invalidFields = getInvalidFields(
         validatorBaseParams,
-        isInModifiedStateFMDList
+        fieldModificationList
+        /* isInModifiedStateFMDList */
       );
       if (invalidFields.length) {
         return {
           error: getFailedResponse(
             modelIdSafe,
             ErrorCode.InvalidModifiedState,
-            'One or more modified fields did not pass validation',
+            ErrorMessage.InvalidModifiedState,
             {
               invalidFields
             }
@@ -458,6 +464,7 @@ const getFieldModificationData = function(
     typeConfig,
     isArray: !!fieldConfig.isArray,
     isRequired: !!fieldConfig.isRequired,
+    isImmutable: !!fieldConfig.isImmutable,
     isInModifiedState: hasProperty(states.modified, safeId(fieldId)),
     rawValues: {},
     deltaValues: undefined
@@ -514,74 +521,104 @@ const getInvalidFields = function(
 
   const simplifyReasons = (reasons: string[]) =>
     reasons.length === 1 ? reasons[0] : reasons;
-  fieldModificationList.forEach(
-    ({ fieldId, typeConfig, isArray, deltaValues, isRequired }) => {
-      const { validator } = typeConfig;
-      if (validator) {
-        const value = deltaValues.modifiedValue;
-        const validatorParams: ValidatorParams = {
-          ...baseParams,
-          modifiedValue: value
-        };
-        if (!isUndefined(deltaValues.existingValue)) {
-          validatorParams.existingValue = deltaValues.existingValue;
-        }
-        let isValid: boolean;
-        let reason: string | string[];
-        if (isArray) {
-          if (isNullOrUndefined(value)) {
-            isValid = !isRequired;
-          } else {
-            if (Array.isArray(value)) {
-              const invalidItems = value
-                .map(modifiedValue =>
-                  runValidators(validator, {
-                    ...validatorParams,
-                    modifiedValue
-                  })
-                )
-                .filter(didFailValidation)
-                .map((outcomes, index) => [
-                  index,
-                  simplifyReasons(getReasonFromOutcomes(outcomes))
-                ]);
-              if (invalidItems.length) {
-                isValid = false;
-                reason = `${invalidItems.length} ${
-                  invalidItems.length === 1 ? 'item' : 'items'
-                } in array failed validation; ${invalidItems
-                  .map(item => `item ${item[0]} failed because '${item[1]}'`)
-                  .join('; ')}`;
-              } else {
-                isValid = true;
-              }
-            } else {
-              isValid = false;
-              reason = `expected array, but value is ${typeof value}`;
-            }
-          }
-        } else {
-          if (isRequired && isNullOrUndefined(value)) {
-            isValid = false;
-            reason = 'required field cannot be empty';
-          } else {
-            const outcomes = runValidators(validator, validatorParams);
-            if (didFailValidation(outcomes)) {
-              const reasons = getReasonFromOutcomes(outcomes);
-              isValid = false;
-              reason = simplifyReasons(reasons);
-            } else {
-              isValid = true;
-            }
-          }
-        }
+  fieldModificationList.forEach(fieldModificationData => {
+    const {
+      fieldId,
+      typeConfig,
+      isArray,
+      deltaValues,
+      isRequired,
+      isImmutable,
+      isInModifiedState
+    } = fieldModificationData;
+    const { validator } = typeConfig;
 
-        if (!isValid) {
-          invalidFields.push({ fieldId, value, reason });
+    let isValid: boolean = true;
+    let reason: string | string[];
+
+    let modifiedValue: any;
+    if (isInModifiedState) {
+      modifiedValue = deltaValues.modifiedValue;
+    }
+
+    // the following two checks (isRequired and isImmutable) will run on
+    // all fields, even if they're not in the modified state
+    if (isRequired && baseParams.isCreate && !isInModifiedState) {
+      isValid = false;
+      reason = ErrorMessage.RequiredFieldMissing;
+    }
+
+    if (isValid && isImmutable && !baseParams.isCreate && isInModifiedState) {
+      // immutable field has been found inside the modified state of an update
+      // operation - check if the value has actually been changed
+      const { delta } = discernFieldDeltaOutcome(fieldModificationData, {
+        deltaCheck: true
+      });
+      if (!isUndefined(delta)) {
+        isValid = false;
+        reason = ErrorMessage.ImmutableFieldChanged;
+      }
+    }
+
+    // The remaining checks will only run if the field
+    // has been modified
+    if (isInModifiedState && isValid && validator) {
+      const validatorParams: ValidatorParams = {
+        ...baseParams,
+        modifiedValue
+      };
+      if (!isUndefined(deltaValues.existingValue)) {
+        validatorParams.existingValue = deltaValues.existingValue;
+      }
+      if (isArray) {
+        if (isNullOrUndefined(modifiedValue) && isRequired) {
+          isValid = false;
+        } else {
+          if (Array.isArray(modifiedValue)) {
+            const invalidItems = modifiedValue
+              .map(modifiedValue =>
+                runValidators(validator, {
+                  ...validatorParams,
+                  modifiedValue
+                })
+              )
+              .filter(didFailValidation)
+              .map((outcomes, index) => [
+                index,
+                simplifyReasons(getReasonFromOutcomes(outcomes))
+              ]);
+            if (invalidItems.length) {
+              isValid = false;
+              reason = ErrorMessage.MultipleInvalidItems(
+                invalidItems.map(item => ({
+                  key: item[0] as string,
+                  reason: item[1] as string
+                }))
+              );
+            }
+          } else {
+            isValid = false;
+            reason = ErrorMessage.UnexpectedType('array', modifiedValue);
+          }
+        }
+      } else {
+        if (isRequired && isNullOrUndefined(modifiedValue)) {
+          isValid = false;
+          reason = ErrorMessage.RequiredFieldMissing;
+        } else {
+          const outcomes = runValidators(validator, validatorParams);
+          if (didFailValidation(outcomes)) {
+            const reasons = getReasonFromOutcomes(outcomes);
+            isValid = false;
+            reason = simplifyReasons(reasons);
+          }
         }
       }
     }
-  );
+    if (!isValid) {
+      invalidFields.push({ fieldId, value: modifiedValue, reason });
+    }
+  });
 
   return invalidFields;
 };
