@@ -10,7 +10,6 @@ import {
   FieldDeltaOutcome,
   FieldMatch,
   DeltaMatch,
-  ArrayDelta,
   DeltaCheck,
   DeltaCheckConfig,
   ValueMatch,
@@ -18,7 +17,12 @@ import {
   GroupedFDOList
 } from '../interfaces/match-config-types';
 import { FieldConfig } from '../interfaces/field-config-types';
-import { DeltaValues, Delta } from '../interfaces/delta-types';
+import {
+  DeltaValues,
+  Diff,
+  ArrayDelta,
+  Delta
+} from '../interfaces/delta-types';
 import {
   performCustomDeltaCheck,
   defaultDeltaCheck
@@ -127,10 +131,9 @@ const getIntentions = function(
       },
       isCreate,
       context: {
-        ...input.context || {}
+        ...(input.context || {})
       }
     };
-
 
     const fieldModificationList = fieldConfigList.map(fieldConfig =>
       getFieldModificationData(
@@ -462,44 +465,41 @@ const getFieldDeltaData = function(
     deltaValues
   } = fieldModificationData;
 
-  const deltaData: FieldDeltaData = (() => {
-    let _delta: Delta;
-    let _arrayDelta: ArrayDelta;
-    return {
-      fieldId,
-      get delta(): Delta {
-        return _delta;
-      },
-      set delta(delta: Delta) {
-        _delta = delta;
-      },
-      get arrayDelta(): ArrayDelta {
-        return _arrayDelta;
-      },
-      set arrayDelta(arrayDelta: ArrayDelta) {
-        _arrayDelta = arrayDelta;
-      },
-      get didChange(): boolean {
-        return !isUndefined(this.delta);
-      }
-    };
-  })();
+  let diff: Diff;
 
   if (isInModifiedState) {
     if (typeConfig.deltaChecker) {
-      deltaData.delta = performCustomDeltaCheck(
-        deltaValues,
-        typeConfig.deltaChecker
-      );
+      diff = performCustomDeltaCheck(deltaValues, typeConfig.deltaChecker);
     } else {
-      deltaData.delta = defaultDeltaCheck(deltaValues, {
+      diff = defaultDeltaCheck(deltaValues, {
         differOptions: { objectHasher: typeConfig.objectHasher }
       });
     }
-    if (isArray || isDeltaForArray(deltaValues)) {
-      deltaData.arrayDelta = generateArrayDelta(deltaValues, deltaData.delta);
-    }
   }
+
+  const deltaData: FieldDeltaData = ((_d: Diff) => {
+    let _diff: Diff = _d;
+    return {
+      fieldId,
+      set diff(diff: Diff) {
+        _diff = diff;
+      },
+      get diff(): Diff {
+        return _diff;
+      },
+      get delta(): Delta {
+        return [deltaValues.modifiedValue, deltaValues.existingValue];
+      },
+      get arrayDelta(): ArrayDelta {
+        if (isArray || isDeltaForArray(deltaValues)) {
+          return generateArrayDelta(deltaValues, _diff);
+        }
+      },
+      get didChange(): boolean {
+        return !isUndefined(_diff);
+      }
+    };
+  })(diff);
 
   return deltaData;
 };
@@ -537,10 +537,7 @@ const discernFieldDeltaOutcome = function(
     if (typeof deltaCheck === 'function') {
       // delta checks already performed, but here
       // we have an override from the intent config
-      deltaData.delta = performCustomDeltaCheck(deltaValues, deltaCheck);
-      if (isArray || isDeltaForArray(deltaValues)) {
-        deltaData.arrayDelta = generateArrayDelta(deltaValues, deltaData.delta);
-      }
+      deltaData.diff = performCustomDeltaCheck(deltaValues, deltaCheck);
     } else if (isDeltaCheckConfig(deltaCheck)) {
       if (deltaCheck.arrayChanges) {
         const {
@@ -684,7 +681,10 @@ const getFieldModificationData = function(
     data.deltaData = {
       fieldId,
       didChange: false,
-      delta: undefined
+      diff: undefined,
+      delta: data.deltaValues
+        ? [data.deltaValues.modifiedValue, data.deltaValues.existingValue]
+        : undefined
     };
   }
 
@@ -916,7 +916,7 @@ const isDeltaForArray = function(deltaValues: DeltaValues): boolean {
 
 const generateArrayDelta = function(
   deltaValues: DeltaValues,
-  delta: Delta
+  delta: Diff
 ): ArrayDelta {
   const { existingValue, modifiedValue } = deltaValues;
 

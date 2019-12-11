@@ -41,7 +41,7 @@ namespace Di {
   export const ErrorCode = _ErrorCode;
 
   export namespace Interface {
-    export type Validator = _Validator;
+    export type Validator<T> = _Validator<T>;
     export type Sanitiser = _Sanitiser;
     export type DeltaChecker = _DeltaChecker;
     export type Hasher = _ObjectHasher;

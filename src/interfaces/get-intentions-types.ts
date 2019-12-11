@@ -5,18 +5,18 @@ import {
   IntentId_S,
   IntentId,
   FieldId,
-  ModelId
+  ModelId,
+  InputValue
 } from './base-types';
 import {
   FieldDeltaOutcome_S,
   FieldDeltaOutcome,
   MatchConfigItem,
-  GroupedFDOList,
-  ArrayDelta
+  GroupedFDOList
 } from './match-config-types';
 import { BaseTypeConfig } from './custom-types';
 import { FieldConfig } from './field-config-types';
-import { DeltaValues, Delta } from './delta-types';
+import { DeltaValues, Diff, DeltaData } from './delta-types';
 import { InvalidFieldValue } from './error-types';
 import { IntentConfig } from './intent-config-types';
 
@@ -55,7 +55,9 @@ interface GetIntentionsResponse {
   sanitisations?: ModelState;
   error?: GetIntentionsError;
   isIntent?: (intentId: IntentId) => boolean;
-  fieldDelta?: (fieldId: FieldId) => FieldDeltaData;
+  fieldDelta?: <T extends InputValue = InputValue>(
+    fieldId: FieldId
+  ) => FieldDeltaData<T>;
 }
 
 interface GetIntentionsError {
@@ -84,11 +86,9 @@ interface FieldModificationData {
   deltaValues?: DeltaValues;
 }
 
-interface FieldDeltaData {
+interface FieldDeltaData<T extends InputValue = InputValue>
+  extends DeltaData<T> {
   fieldId: FieldId;
-  didChange: boolean;
-  delta: Delta;
-  arrayDelta?: ArrayDelta;
 }
 
 interface FieldWithTypeConfigMap {

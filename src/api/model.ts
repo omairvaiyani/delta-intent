@@ -49,13 +49,7 @@ export class ModelApi {
     input: GetIntentionsInput,
     options?: GetIntentionsOptions
   ) {
-    const outcome = getIntentions(this.toConfig(), input, options);
-    return {
-      ...outcome,
-      isIntent(intentId: IntentId): boolean {
-        return outcome.intentIds.includes(intentId);
-      }
-    };
+    return getIntentions(this.toConfig(), input, options);
   }
 
   private toConfig(): ModelConfiguration {

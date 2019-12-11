@@ -1,5 +1,5 @@
 import { Config, DiffPatcher } from 'jsondiffpatch';
-import { DeltaValues, DifferOptions, Delta } from '../interfaces/delta-types';
+import { DeltaValues, DifferOptions, Diff } from '../interfaces/delta-types';
 import { DeltaChecker } from '../interfaces/match-config-types';
 import { ObjectHasher } from '../interfaces/hasher-types';
 import { InputValue } from '../interfaces/base-types';
@@ -36,7 +36,7 @@ const _executeObjectHasher = (
   objectHasher: ObjectHasher,
   existingValue: InputValue,
   modifiedValue: InputValue
-): Delta => {
+): Diff => {
   const existingId = existingValue ? objectHasher(existingValue) : undefined;
   const modifiedId = modifiedValue ? objectHasher(modifiedValue) : undefined;
   return existingId !== modifiedId ? [existingId, modifiedId] : undefined;

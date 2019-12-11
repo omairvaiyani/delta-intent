@@ -1,6 +1,6 @@
 import Joi from '@hapi/joi';
 import { FieldId, InputValue, FieldId_S, InputValue_S } from './base-types';
-import { DeltaValues, Delta, Delta_S } from './delta-types';
+import { DeltaValues, Diff } from './delta-types';
 import { DifferOptions } from '../utils/diff';
 import { enumValues } from '../utils/common';
 import { FieldDeltaData } from './get-intentions-types';
@@ -27,7 +27,7 @@ const DeltaChecker_S = Joi.func()
 type DeltaChecker<T extends InputValue = InputValue> = (
   deltaValues: DeltaValues<T>,
   options?: { differOptions?: DifferOptions }
-) => Delta;
+) => Diff;
 
 const ManualMatcher_S = Joi.func().arity(1);
 
@@ -113,28 +113,6 @@ interface MatchConfig {
   items: MatchConfigItem[];
 }
 
-const ArrayDeltaItem_S = Joi.alternatives([
-  Joi.string(),
-  Joi.array().items(Joi.any(), Joi.number()),
-  Joi.array().items(Joi.any(), Joi.number(), Joi.number())
-]);
-const ArrayDelta_S = Joi.object({
-  added: Joi.array()
-    .items(ArrayDeltaItem_S)
-    .required(),
-  removed: Joi.array()
-    .items(ArrayDeltaItem_S)
-    .required(),
-  moved: Joi.array()
-    .items(ArrayDeltaItem_S)
-    .required()
-});
-interface ArrayDelta {
-  added: Array<[any, number] | string>;
-  removed: Array<[any, number] | string>;
-  moved: Array<[any, number, number]>;
-}
-
 const FieldDeltaOutcome_S = Joi.object({
   fieldId: FieldId_S.required(),
   didMatch: Joi.boolean().required(),
@@ -163,7 +141,6 @@ export {
   DeltaMatch_S,
   MatchConfigItem_S,
   MatchConfig_S,
-  ArrayDelta_S,
   FieldDeltaOutcome_S,
   ManualMatcher_S
 };
@@ -177,7 +154,6 @@ export {
   DeltaCheckConfig,
   DeltaChecker,
   DeltaCheck,
-  ArrayDelta,
   FieldDeltaOutcome,
   GroupedFDOList,
   ManualMatcher

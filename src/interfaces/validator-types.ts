@@ -1,6 +1,6 @@
 import Joi from '@hapi/joi';
 import { DeltaValues } from './delta-types';
-import { ModelState } from './base-types';
+import { ModelState, InputValue } from './base-types';
 
 const Validator_S = Joi.func().arity(1);
 
@@ -12,10 +12,14 @@ interface ValidatorBaseParams {
   context?: Record<string, any>;
 }
 
-interface ValidatorParams extends DeltaValues, ValidatorBaseParams {}
+interface ValidatorParams<T extends InputValue = InputValue>
+  extends DeltaValues<T>,
+    ValidatorBaseParams {}
 
 type ValidatorOutcome = boolean | string;
-type Validator = (params: ValidatorParams) => ValidatorOutcome;
+type Validator<T extends InputValue = InputValue> = (
+  params: ValidatorParams<T>
+) => ValidatorOutcome;
 
 const DefaultInvalidValueMessage = 'did not pass validation';
 
