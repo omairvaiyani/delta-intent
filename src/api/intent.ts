@@ -20,7 +20,7 @@ export class IntentApi {
     this._intentId = intentId;
   }
 
-  public get typeId() {
+  public get intentId() {
     return this._intentId;
   }
 

@@ -25,7 +25,7 @@ export class TypeApi {
     this._validators.push(validator);
     return this;
   }
-  
+
   public sanitiser(sanitiser: Sanitiser): TypeApi {
     if (this._sanitiser) {
       throw new Error('You cannot set more than one sanitiser per Type');
@@ -34,7 +34,7 @@ export class TypeApi {
     return this;
   }
   public hasher(hasher: ObjectHasher): TypeApi {
-    if (this.hasher) {
+    if (this._hasher) {
       throw new Error('You cannot set more than one hasher per Type');
     }
     this._hasher = hasher;

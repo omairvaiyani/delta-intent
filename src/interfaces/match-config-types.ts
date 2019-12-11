@@ -3,6 +3,7 @@ import { FieldId, InputValue, FieldId_S, InputValue_S } from './base-types';
 import { DeltaValues, Delta, Delta_S } from './delta-types';
 import { DifferOptions } from '../utils/diff';
 import { enumValues } from '../utils/common';
+import { FieldDeltaData } from './get-intentions-types';
 
 const FieldMatch_S = Joi.alternatives().try(
   FieldId_S,
@@ -137,14 +138,22 @@ interface ArrayDelta {
 const FieldDeltaOutcome_S = Joi.object({
   fieldId: FieldId_S.required(),
   didMatch: Joi.boolean().required(),
-  delta: Delta_S.optional(),
-  arrayDelta: ArrayDelta_S.optional()
+  deltaData: Joi.object({
+    fieldId: Joi.string().required(),
+    didChange: Joi.boolean().required(),
+    delta: Joi.any(),
+    arrayDelta: Joi.any()
+  })
 });
 interface FieldDeltaOutcome {
   fieldId: FieldId;
   didMatch: boolean;
-  delta?: Delta;
-  arrayDelta?: ArrayDelta;
+  deltaData: FieldDeltaData;
+}
+
+interface GroupedFDOList {
+  every: FieldDeltaOutcome[];
+  some: Array<FieldDeltaOutcome[]>;
 }
 
 export {
@@ -170,5 +179,6 @@ export {
   DeltaCheck,
   ArrayDelta,
   FieldDeltaOutcome,
+  GroupedFDOList,
   ManualMatcher
 };

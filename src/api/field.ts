@@ -3,6 +3,8 @@ import { Sanitiser } from '../interfaces/sanitiser-types';
 import { ObjectHasher } from '../interfaces/hasher-types';
 import { FieldConfig } from '../interfaces/field-config-types';
 import { TypeId, FieldId } from '../interfaces/base-types';
+import { DeltaIntentError } from '../utils/validator';
+import { ErrorCode, ErrorMessage } from '../core/errors';
 
 export class FieldApi {
   private _fieldId: FieldId;
@@ -24,7 +26,14 @@ export class FieldApi {
 
   public type(typeId: TypeId): FieldApi {
     if (this._typeId) {
-      throw new Error('You cannot set more than one type on a Field');
+      throw new DeltaIntentError(
+        ErrorCode.InvalidArgument,
+        ErrorMessage.InvalidArgument(
+          'typeId',
+          typeId,
+          `you cannot set more than one type per Field`
+        )
+      );
     }
     this._typeId = typeId;
     return this;
@@ -62,7 +71,7 @@ export class FieldApi {
   }
 
   public hasher(hasher: ObjectHasher): FieldApi {
-    if (this.hasher) {
+    if (this._hasher) {
       throw new Error('You cannot set more than one hasher per Field');
     }
     this._hasher = hasher;

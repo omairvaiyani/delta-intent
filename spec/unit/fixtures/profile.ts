@@ -196,6 +196,13 @@ export const fixture: TestFixture = {
             }
           ]
         }
+      },
+      {
+        error: {
+          modelId: null,
+          code: ErrorCode.InvalidModifiedState,
+          message: ErrorMessage.UninterpretedIntention
+        }
       }
     ],
     [
@@ -209,18 +216,66 @@ export const fixture: TestFixture = {
         }
       },
       {
-        description: 'returns error if unknown field is passed in',
+        description: 'error if modified state has unknown field',
         error: {
           modelId: null,
-          code: ErrorCode.UnknownError,
-          message: ErrorMessage.InvalidModifiedState,
-          invalidFields: [
-            {
-              fieldId: 'foo',
-              value: 'bar',
-              reason: ErrorMessage.UnknownFieldInState
-            }
-          ]
+          code: ErrorCode.InvalidModifiedState,
+          message: ErrorMessage.UnknownFieldInState,
+          info: {
+            unknownFields: ['foo']
+          }
+        }
+      }
+    ],
+    [
+      [],
+      {
+        modifiedState: {
+          name: 'Wilma'
+        },
+        existingState: {
+          name: 'Scooby Doo',
+          age: 10,
+          email: 'scooby.doo@mysteries.cnn',
+          foo: 'bar',
+          baz: 'rah'
+        }
+      },
+      {
+        description: 'error if existing state has unknown fields',
+        error: {
+          modelId: null,
+          code: ErrorCode.InvalidModifiedState,
+          message: ErrorMessage.UnknownFieldInState,
+          info: {
+            unknownFields: ['foo', 'baz']
+          }
+        }
+      }
+    ],
+    [
+      [],
+      {
+        modifiedState: {
+          name: 'Wilma',
+          foo: 'bar'
+        },
+        existingState: {
+          name: 'Scooby Doo',
+          age: 10,
+          email: 'scooby.doo@mysteries.cnn',
+          foo: 'bar'
+        }
+      },
+      {
+        description: 'error if both states have the same unknown field',
+        error: {
+          modelId: null,
+          code: ErrorCode.InvalidModifiedState,
+          message: ErrorMessage.UnknownFieldInState,
+          info: {
+            unknownFields: ['foo']
+          }
         }
       }
     ],
@@ -310,6 +365,14 @@ export const fixture: TestFixture = {
             { icon: 'star', label: 'Premium' },
             { icon: 'bolt', label: 'Power' }
           ]
+        }
+      },
+      {
+        error: {
+          modelId: null,
+          code: ErrorCode.InvalidModifiedState,
+          message: ErrorMessage.UninterpretedIntention,
+          info: null
         }
       }
     ],

@@ -107,4 +107,9 @@ const postValueMatchOptions = function(matchApi: MatchApi) {
   };
 };
 
-export { MatchApi, DefinedMatchApi };
+const Match = {
+  AnyField: (fieldIds: FieldId[]) => [fieldIds],
+  Presence: ValueMatchPresence
+};
+
+export { MatchApi, DefinedMatchApi, Match };

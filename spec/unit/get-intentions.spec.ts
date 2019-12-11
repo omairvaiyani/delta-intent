@@ -6,23 +6,8 @@ import { TypeConfigStore } from '../../src/core/type-config-store';
 import { safeId } from '../../src/utils/common';
 import { getIntentions } from '../../src/core/get-intentions';
 import { ModelConfiguration } from '../../src/core/model-configuration';
-import { GetIntentionsResponse_S } from '../../src/interfaces/get-intentions-types';
 
 describe('getIntentions', function() {
-  const getMCInput = () => ({
-    modelId: 'ModelS',
-    typeConfigList: [getTypeConfig('TypeA')],
-    fieldConfigList: [
-      {
-        ...getFieldConfig('fieldA'),
-        typeId: 'TypeA'
-      },
-      getFieldConfig('fieldB')
-    ],
-    intentConfigList: [getIntentConfig('IntentX', ['fieldA', 'fieldB'])]
-  });
-  const getModelConfiguration = () => new ModelConfiguration(getMCInput());
-
   const getValidInput = () => ({
     existingState: {
       name: 'Dave Downer',
@@ -46,11 +31,6 @@ describe('getIntentions', function() {
     } catch (e) {
       expect(e).to.be.instanceOf(Error);
     }
-  });
-  it('should return a valid structured response', () => {
-    const response = getIntentions(getModelConfiguration(), getValidInput());
-    const { error } = Joi.validate(response, GetIntentionsResponse_S);
-    expect(error).to.not.be.ok;
   });
 
   const fixtures = [profile, purchaseOrder, accidentClaim];
@@ -95,20 +75,20 @@ describe('getIntentions', function() {
             const { error } = response;
             expect(error).to.be.ok;
 
-            if (modelId !== null) {
-              expect(error.modelId).to.equal(modelId);
+            if (message !== null) {
+              expect(error.message).to.equal(message);
             }
             if (code !== null) {
               expect(error.code).to.equal(code);
-            }
-            if (message !== null) {
-              expect(error.message).to.equal(message);
             }
             if (info !== null) {
               expect(error.info).to.deep.equal(info);
             }
             if (invalidFields !== null) {
               expect(error.invalidFields).to.deep.equal(invalidFields);
+            }
+            if (modelId !== null) {
+              expect(error.modelId).to.equal(modelId);
             }
           } else {
             const response = runScenario();

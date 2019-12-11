@@ -171,6 +171,14 @@ export const fixture: TestFixture = {
                   value: 'approved'
                 }
               }
+            },
+            {
+              fieldMatch: 'hasInsurance',
+              deltaMatch: {
+                modifiedState: {
+                  presence: ValueMatchPresence.Optional
+                }
+              }
             }
           ]
         }
@@ -213,7 +221,7 @@ export const fixture: TestFixture = {
       }
     ],
     [
-      ['AddInsurance'],
+      ['ApproveClaim'],
       {
         existingState: {
           claimId: '1',
@@ -265,7 +273,12 @@ export const fixture: TestFixture = {
         }
       },
       {
-        description: 'omits strict intent when given unexpected field'
+        description: 'fails strict intent when given unexpected field',
+        error: {
+          modelId: null,
+          code: ErrorCode.InvalidModifiedState,
+          message: ErrorMessage.UninterpretedIntention
+        }
       }
     ],
     [

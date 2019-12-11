@@ -7,11 +7,18 @@ import {
   FieldId,
   ModelId
 } from './base-types';
-import { FieldDeltaOutcome_S, FieldDeltaOutcome } from './match-config-types';
+import {
+  FieldDeltaOutcome_S,
+  FieldDeltaOutcome,
+  MatchConfigItem,
+  GroupedFDOList,
+  ArrayDelta
+} from './match-config-types';
 import { BaseTypeConfig } from './custom-types';
 import { FieldConfig } from './field-config-types';
-import { DeltaValues } from './delta-types';
+import { DeltaValues, Delta } from './delta-types';
 import { InvalidFieldValue } from './error-types';
+import { IntentConfig } from './intent-config-types';
 
 const GetIntentionsInput_S = Joi.object({
   modifiedState: ModelState_S.required(),
@@ -47,6 +54,8 @@ interface GetIntentionsResponse {
   fieldDeltaOutcomeList?: FieldDeltaOutcome[];
   sanitisations?: ModelState;
   error?: GetIntentionsError;
+  isIntent?: (intentId: IntentId) => boolean;
+  fieldDelta?: (fieldId: FieldId) => FieldDeltaData;
 }
 
 interface GetIntentionsError {
@@ -70,13 +79,35 @@ interface FieldModificationData {
     sanitised?: any;
     existing?: any;
   };
+  deltaData: FieldDeltaData;
   // only present if modified
   deltaValues?: DeltaValues;
+}
+
+interface FieldDeltaData {
+  fieldId: FieldId;
+  didChange: boolean;
+  delta: Delta;
+  arrayDelta?: ArrayDelta;
 }
 
 interface FieldWithTypeConfigMap {
   fieldConfig: FieldConfig;
   typeConfig: BaseTypeConfig;
+}
+
+interface IntentFieldData {
+  intentConfig: IntentConfig;
+  acceptableFMDList: FieldModificationData[];
+  optionalFMDList: FieldModificationData[];
+  matchConfigItemDataList: MatchConfigItemData[];
+}
+
+interface MatchConfigItemData {
+  matchConfigItem: MatchConfigItem;
+  matchedFMDList: FieldModificationData[];
+  flatFDOList: FieldDeltaOutcome[];
+  groupedFDOList: GroupedFDOList;
 }
 
 export { GetIntentionsInput_S, GetIntentionsResponse_S };
@@ -86,5 +117,8 @@ export {
   GetIntentionsResponse,
   GetIntentionsError,
   FieldModificationData,
-  FieldWithTypeConfigMap
+  FieldDeltaData,
+  FieldWithTypeConfigMap,
+  MatchConfigItemData,
+  IntentFieldData
 };

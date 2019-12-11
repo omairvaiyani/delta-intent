@@ -1,10 +1,10 @@
 import { ModelConfiguration } from './model-configuration';
 import {
   ModelState,
-  IntentId,
   InputValue,
   FieldId,
-  ModelId
+  ModelId,
+  IntentId
 } from '../interfaces/base-types';
 import {
   FieldDeltaOutcome,
@@ -14,7 +14,8 @@ import {
   DeltaCheck,
   DeltaCheckConfig,
   ValueMatch,
-  ValueMatchPresence
+  ValueMatchPresence,
+  GroupedFDOList
 } from '../interfaces/match-config-types';
 import { FieldConfig } from '../interfaces/field-config-types';
 import { DeltaValues, Delta } from '../interfaces/delta-types';
@@ -32,8 +33,11 @@ import {
   GetIntentionsInput_S,
   FieldModificationData,
   FieldWithTypeConfigMap,
+  IntentFieldData,
   GetIntentionsError,
-  GetIntentionsOptions
+  GetIntentionsOptions,
+  MatchConfigItemData,
+  FieldDeltaData
 } from '../interfaces/get-intentions-types';
 import { isUndefined, isNullOrUndefined } from 'util';
 import {
@@ -79,10 +83,23 @@ const getIntentions = function(
     } = modelConfiguration;
     const fieldIds = fieldConfigList.map(f => f.fieldId);
 
-    const { existingState, modifiedState } = getInputWithKnownFieldsOnly(
-      fieldIds,
-      input
-    );
+    const unknownFields = getUnknownFieldsFromInput(fieldIds, input);
+    if (unknownFields.length) {
+      return {
+        error: getFailedResponse(
+          modelIdSafe,
+          ErrorCode.InvalidModifiedState,
+          ErrorMessage.UnknownFieldInState,
+          {
+            info: {
+              unknownFields
+            }
+          }
+        )
+      };
+    }
+
+    const { existingState, modifiedState } = input;
 
     const isCreate = isUndefined(existingState);
 
@@ -108,12 +125,12 @@ const getIntentions = function(
         ...(existingState || {}),
         ...modifiedState
       },
-      isCreate
+      isCreate,
+      context: {
+        ...input.context || {}
+      }
     };
 
-    if (input.context) {
-      validatorBaseParams.context = input.context;
-    }
 
     const fieldModificationList = fieldConfigList.map(fieldConfig =>
       getFieldModificationData(
@@ -150,8 +167,6 @@ const getIntentions = function(
       }
     }
 
-    const preliminarilyMatchedIntents: IntentConfig[] = [];
-
     let fieldDeltaOutcomeList: FieldDeltaOutcome[] = [];
 
     debug(`input is ${existingState ? `create` : 'update'}`);
@@ -163,156 +178,156 @@ const getIntentions = function(
       fMD => fMD.fieldId
     );
 
-    intentConfigList
+    const intentFieldDataList = intentConfigList
       .filter(matchIntentConfigByOperationType.bind(null, isCreate))
-      .forEach(intentConfig => {
-        debug(`checking intent: ${safeId(intentConfig.intentId)}`);
+      .map(intentConfig =>
+        getIntentFieldData(intentConfig, fieldModificationList)
+      );
 
-        const { internalPolicy } = intentConfig;
-        const isStrict = internalPolicy === InternalPolicy.Strict;
-        if (isStrict) {
-          const acceptableFMDList = intentConfig.matchConfig.items
-            .map(matchConfigItem =>
-              filterFMDListByMatchConfig(
-                matchConfigItem.fieldMatch,
-                fieldModificationList
-              )
-            )
-            .reduce((a, b) => a.concat(b), []);
-          const acceptableFieldIds = acceptableFMDList.map(fMD => fMD.fieldId);
-          const unacceptableFieldIds = isInModifiedStateFieldIds.filter(
-            fieldId => !acceptableFieldIds.includes(fieldId)
+    const firstPassIFDList: IntentFieldData[] = [];
+
+    intentFieldDataList.forEach(intentFieldData => {
+      const {
+        intentConfig,
+        acceptableFMDList,
+        optionalFMDList,
+        matchConfigItemDataList
+      } = intentFieldData;
+      debug(`checking intent: ${safeId(intentConfig.intentId)}`);
+
+      const { internalPolicy } = intentConfig;
+      const isStrict = internalPolicy === InternalPolicy.Strict;
+      if (isStrict) {
+        const acceptableFieldIds = acceptableFMDList.map(fMD => fMD.fieldId);
+        const unacceptableFieldIds = isInModifiedStateFieldIds.filter(
+          fieldId => !acceptableFieldIds.includes(fieldId)
+        );
+        if (unacceptableFieldIds.length) {
+          verbose(
+            `will not match due to strict policy and unacceptable fields found: ${unacceptableFieldIds}`
           );
-          if (unacceptableFieldIds.length) {
+          return false;
+        } else if (
+          isInModifiedStateFieldIds.length < acceptableFieldIds.length
+        ) {
+          const optionalFieldIds = optionalFMDList.map(fMD => fMD.fieldId);
+          const missingFieldIds = acceptableFMDList.filter(
+            fMD =>
+              !fMD.isInModifiedState && !optionalFieldIds.includes(fMD.fieldId)
+          );
+          if (missingFieldIds.length) {
             verbose(
-              `will not match due to strict policy and unaccetpable fields found: ${unacceptableFieldIds}`
+              `will not match due to strict policy and missing fields: ${missingFieldIds}`
             );
             return false;
-          } else if (
-            isInModifiedStateFieldIds.length < acceptableFieldIds.length
-          ) {
-            const optionalFieldIds = intentConfig.matchConfig.items
-              .filter(
-                matchConfigItem =>
-                  matchConfigItem.deltaMatch.modifiedState &&
-                  matchConfigItem.deltaMatch.modifiedState.presence ===
-                    ValueMatchPresence.Optional
-              )
-              .map(matchConfigItem =>
-                filterFMDListByMatchConfig(
-                  matchConfigItem.fieldMatch,
-                  fieldModificationList
-                )
-              )
-              .reduce((a, b) => a.concat(b), [])
-              .map(fMD => fMD.fieldId);
-
-            const missingFieldIds = acceptableFMDList.filter(
-              fMD =>
-                !fMD.isInModifiedState &&
-                !optionalFieldIds.includes(fMD.fieldId)
-            );
-            if (missingFieldIds.length) {
-              verbose(
-                `will not match due to strict policy and missing fields: ${missingFieldIds}`
-              );
-              return false;
-            }
           }
         }
+      }
 
-        const isIntent = intentConfig.matchConfig.items.every(
-          matchConfigItem => {
-            const { fieldMatch, deltaMatch } = matchConfigItem;
-            debug(`matching ${fieldMatch}`);
+      const isIntent = matchConfigItemDataList.every(
+        ({ matchConfigItem, matchedFMDList, flatFDOList, groupedFDOList }) => {
+          debug(`matching ${matchConfigItem.fieldMatch}`);
 
-            const matchedFMDList = filterFMDListByMatchConfig(
-              fieldMatch,
-              fieldModificationList
-            );
-            verbose(`${matchedFMDList.length} fields to match against`);
+          verbose(`${matchedFMDList.length} fields to match against`);
 
-            const flatFDOList = matchedFMDList.map(fieldModificationData => {
-              const {
-                fieldId,
-                isInModifiedState,
-                deltaValues
-              } = fieldModificationData;
-              verbose(`${fieldId}: getting delta outcome`);
+          const _AND_fDOMatch = groupedFDOList.every.length
+            ? groupedFDOList.every.every(fDO => fDO.didMatch)
+            : true;
+          const _OR_fDOMatch = groupedFDOList.some.length
+            ? groupedFDOList.some.every(fDOGroup =>
+                fDOGroup.some(fDO => fDO.didMatch)
+              )
+            : true;
 
-              debug({
-                fieldId,
-                isInModifiedState,
-                deltaValues
-              });
+          verbose(`adding ${flatFDOList.length} field delta outcomes to list`);
 
-              verbose({
-                deltaMatch
-              });
+          fieldDeltaOutcomeList = [...fieldDeltaOutcomeList, ...flatFDOList];
 
-              const fDO: FieldDeltaOutcome = discernFieldDeltaOutcome(
-                fieldModificationData,
-                deltaMatch
-              );
+          debug(`match outcome for AND fields: ${_AND_fDOMatch}`);
+          debug(`match outcome for OR fields: ${_OR_fDOMatch}`);
 
-              verbose({ fieldId, deltaOutcome: fDO });
-              debug(`${fieldId} ${fDO.didMatch ? 'did' : 'did not'} match`);
+          return _AND_fDOMatch && _OR_fDOMatch;
+        }
+      );
+      debug(
+        `Intent '${safeId(intentConfig.intentId)}' ${
+          isIntent ? 'did' : 'did not'
+        } match`
+      );
 
-              return fDO;
-            });
-            const groupedFDOList = conditionallyGroupFDOList(
-              flatFDOList,
-              fieldMatch
-            );
-            const _AND_fDOMatch = groupedFDOList.every.length
-              ? groupedFDOList.every.every(fDO => fDO.didMatch)
-              : true;
-            const _OR_fDOMatch = groupedFDOList.some.length
-              ? groupedFDOList.some.every(fDOGroup =>
-                  fDOGroup.some(fDO => fDO.didMatch)
-                )
-              : true;
+      if (isIntent) {
+        firstPassIFDList.push(intentFieldData);
+        verbose(`total ${firstPassIFDList.length} intents matched so far`);
+      }
+    });
 
-            verbose(
-              `adding ${flatFDOList.length} field delta outcomes to list`
-            );
+    // if more than one, find the first exlusive match
+    const matchedIntentFieldDataList = filterMatchedIntentsByPolicy(
+      firstPassIFDList
+    );
 
-            fieldDeltaOutcomeList = [...fieldDeltaOutcomeList, ...flatFDOList];
+    if (matchedIntentFieldDataList.length) {
+      const matchedFieldIds: FieldId[] = matchedIntentFieldDataList
+        .map(intentFieldData =>
+          intentFieldData.acceptableFMDList.map(fMD => fMD.fieldId)
+        )
+        .reduce((a, b) => a.concat(b), []);
 
-            debug(`match outcome for AND fields: ${_AND_fDOMatch}`);
-            debug(`match outcome for OR fields: ${_OR_fDOMatch}`);
+      const unmatchedFMDList = isInModifedStateFMDList
+        .filter(fMD => fMD.deltaData.didChange)
+        .filter(fMD => !matchedFieldIds.includes(fMD.fieldId));
 
-            return _AND_fDOMatch && _OR_fDOMatch;
-          }
+      if (unmatchedFMDList.length) {
+        return {
+          error: getFailedResponse(
+            modelIdSafe,
+            ErrorCode.InvalidModifiedState,
+            ErrorMessage.UnmatchedFieldInModifiedState,
+            {
+              info: {
+                unmatchedFieldIds: unmatchedFMDList.map(fMD => fMD.fieldId)
+              }
+            }
+          )
+        };
+      }
+    } else if (isInModifedStateFMDList.some(fMD => fMD.deltaData.didChange)) {
+      // no intentions found, but some fields have changed
+      return {
+        error: getFailedResponse(
+          modelIdSafe,
+          ErrorCode.InvalidModifiedState,
+          ErrorMessage.UninterpretedIntention
+        )
+      };
+    }
+
+    const matchedIntentIds = matchedIntentFieldDataList.map(
+      iFD => iFD.intentConfig.intentId
+    );
+
+    const response: GetIntentionsResponse = {
+      intentIds: matchedIntentIds,
+      isIntent(intentId: IntentId) {
+        return matchedIntentIds.includes(intentId);
+      },
+      fieldDelta(fieldId: FieldId) {
+        const fieldModificationData = fieldModificationList.find(
+          fMD => fMD.fieldId === fieldId
         );
-        debug(
-          `Intent '${safeId(intentConfig.intentId)}' ${
-            isIntent ? 'did' : 'did not'
-          } match`
-        );
-
-        if (isIntent) {
-          preliminarilyMatchedIntents.push(intentConfig);
-          verbose(
-            `total ${preliminarilyMatchedIntents.length} intents matched so far`
+        if (!fieldModificationData) {
+          throw new DeltaIntentError(
+            ErrorCode.InvalidArgument,
+            ErrorMessage.InvalidArgument(
+              'fieldId',
+              fieldId,
+              `no such field exists in the ${modelIdSafe} model`
+            )
           );
         }
-      });
-
-    // if more than one, filter out exclusives
-    const intentIds =
-      preliminarilyMatchedIntents.length === 1
-        ? [preliminarilyMatchedIntents[0].intentId]
-        : preliminarilyMatchedIntents
-            .filter(
-              intentConfig =>
-                intentConfig.externalPolicy === ExternalPolicy.Inclusive
-            )
-            .map(iC => iC.intentId);
-
-    const response = {
-      intentIds
-    } as GetIntentionsResponse;
+        return fieldModificationData.deltaData;
+      }
+    };
 
     if (existingState) {
       response.fieldDeltaOutcomeList = fieldDeltaOutcomeList;
@@ -370,22 +385,139 @@ const getFailedResponse = function(
   return error;
 };
 
+const getIntentFieldData = function(
+  intentConfig: IntentConfig,
+  fieldModificationList: FieldModificationData[]
+): IntentFieldData {
+  const acceptableFMDList = intentConfig.matchConfig.items
+    .map(matchConfigItem =>
+      filterFMDListByMatchConfig(
+        matchConfigItem.fieldMatch,
+        fieldModificationList
+      )
+    )
+    .reduce((a, b) => a.concat(b), []);
+
+  const optionalFMDList = acceptableFMDList.length
+    ? intentConfig.matchConfig.items
+        .filter(
+          matchConfigItem =>
+            matchConfigItem.deltaMatch &&
+            matchConfigItem.deltaMatch.modifiedState &&
+            matchConfigItem.deltaMatch.modifiedState.presence ===
+              ValueMatchPresence.Optional
+        )
+        .map(matchConfigItem =>
+          filterFMDListByMatchConfig(
+            matchConfigItem.fieldMatch,
+            fieldModificationList
+          )
+        )
+        .reduce((a, b) => a.concat(b), [])
+    : [];
+
+  const matchConfigItemDataList: MatchConfigItemData[] = intentConfig.matchConfig.items.map(
+    matchConfigItem => {
+      const matchedFMDList = filterFMDListByMatchConfig(
+        matchConfigItem.fieldMatch,
+        fieldModificationList
+      );
+      const flatFDOList = matchedFMDList.map(fieldModificationData => {
+        const fDO: FieldDeltaOutcome = discernFieldDeltaOutcome(
+          fieldModificationData,
+          matchConfigItem.deltaMatch
+        );
+
+        return fDO;
+      });
+      const groupedFDOList = conditionallyGroupFDOList(
+        flatFDOList,
+        matchConfigItem.fieldMatch
+      );
+      return {
+        matchConfigItem,
+        matchedFMDList,
+        flatFDOList,
+        groupedFDOList
+      };
+    }
+  );
+
+  return {
+    intentConfig,
+    acceptableFMDList,
+    optionalFMDList,
+    matchConfigItemDataList
+  };
+};
+
+const getFieldDeltaData = function(
+  fieldModificationData: FieldModificationData
+): FieldDeltaData {
+  const {
+    fieldId,
+    typeConfig,
+    isInModifiedState,
+    isArray,
+    deltaValues
+  } = fieldModificationData;
+
+  const deltaData: FieldDeltaData = (() => {
+    let _delta: Delta;
+    let _arrayDelta: ArrayDelta;
+    return {
+      fieldId,
+      get delta(): Delta {
+        return _delta;
+      },
+      set delta(delta: Delta) {
+        _delta = delta;
+      },
+      get arrayDelta(): ArrayDelta {
+        return _arrayDelta;
+      },
+      set arrayDelta(arrayDelta: ArrayDelta) {
+        _arrayDelta = arrayDelta;
+      },
+      get didChange(): boolean {
+        return !isUndefined(this.delta);
+      }
+    };
+  })();
+
+  if (isInModifiedState) {
+    if (typeConfig.deltaChecker) {
+      deltaData.delta = performCustomDeltaCheck(
+        deltaValues,
+        typeConfig.deltaChecker
+      );
+    } else {
+      deltaData.delta = defaultDeltaCheck(deltaValues, {
+        differOptions: { objectHasher: typeConfig.objectHasher }
+      });
+    }
+    if (isArray || isDeltaForArray(deltaValues)) {
+      deltaData.arrayDelta = generateArrayDelta(deltaValues, deltaData.delta);
+    }
+  }
+
+  return deltaData;
+};
+
 const discernFieldDeltaOutcome = function(
   fieldModificationData: FieldModificationData,
   deltaMatch: DeltaMatch
 ): FieldDeltaOutcome {
   const {
-    typeConfig,
     fieldConfig,
     isInModifiedState,
     isArray,
-    deltaValues
+    deltaValues,
+    deltaData
   } = fieldModificationData;
   const { deltaCheck, existingState, modifiedState } = deltaMatch;
 
-  let didMatch: boolean = false;
-  let delta: Delta;
-  let arrayDelta: ArrayDelta;
+  let didMatch = false;
 
   if (existingState || modifiedState) {
     const [existingStateMatches, modifiedStateMatches] = [
@@ -403,27 +535,20 @@ const discernFieldDeltaOutcome = function(
     didMatch = existingStateMatches && modifiedStateMatches;
   } else if (isInModifiedState && deltaCheck) {
     if (typeof deltaCheck === 'function') {
-      delta = performCustomDeltaCheck(deltaValues, deltaCheck);
-    } else if (typeConfig.deltaChecker) {
-      delta = performCustomDeltaCheck(deltaValues, typeConfig.deltaChecker);
-    } else {
-      delta = defaultDeltaCheck(deltaValues, {
-        differOptions: { objectHasher: typeConfig.objectHasher }
-      });
-    }
-
-    if (isArray || isDeltaForArray(deltaValues)) {
-      arrayDelta = generateArrayDelta(deltaValues, delta);
-    }
-
-    if (isDeltaCheckConfig(deltaCheck)) {
+      // delta checks already performed, but here
+      // we have an override from the intent config
+      deltaData.delta = performCustomDeltaCheck(deltaValues, deltaCheck);
+      if (isArray || isDeltaForArray(deltaValues)) {
+        deltaData.arrayDelta = generateArrayDelta(deltaValues, deltaData.delta);
+      }
+    } else if (isDeltaCheckConfig(deltaCheck)) {
       if (deltaCheck.arrayChanges) {
         const {
           added: _added,
           removed: _removed,
           moved: _moved
         } = deltaCheck.arrayChanges;
-        const { added, removed, moved } = arrayDelta || {
+        const { added, removed, moved } = deltaData.arrayDelta || {
           added: [],
           removed: [],
           moved: []
@@ -442,20 +567,16 @@ const discernFieldDeltaOutcome = function(
           [_moved, moved]
         ].every(arrayChangeMatched);
       }
-    } else if (delta) {
-      didMatch = true;
+    } else if (typeof deltaCheck === 'boolean') {
+      didMatch = deltaCheck === deltaData.didChange;
     }
   }
 
   const outcome: FieldDeltaOutcome = {
     fieldId: fieldConfig.fieldId,
     didMatch,
-    delta
+    deltaData
   };
-
-  if (arrayDelta) {
-    outcome.arrayDelta = arrayDelta;
-  }
 
   return outcome;
 };
@@ -470,29 +591,22 @@ const isFieldModified = function(
   );
 };
 
-const getInputWithKnownFieldsOnly = (
+const getUnknownFieldsFromInput = (
   fieldIds: FieldId[],
   input: GetIntentionsInput
-): GetIntentionsInput => {
+): string[] => {
   const { existingState, modifiedState } = input;
 
-  const withoutUnkownKeys = (state: any) => {
-    const _state = { ...state };
-    Object.keys(_state)
-      .filter(key => !fieldIds.includes(key))
-      .forEach(unknownKey => delete _state[unknownKey]);
-    return _state;
-  };
+  const unknownFields = (state: any) =>
+    Object.keys(state).filter(key => !fieldIds.includes(key));
 
-  const _input: GetIntentionsInput = {
-    modifiedState: withoutUnkownKeys(modifiedState)
-  };
-
-  if (existingState) {
-    _input.existingState = withoutUnkownKeys(existingState);
-  }
-
-  return _input;
+  return Array.from(
+    new Set(
+      unknownFields(modifiedState).concat(
+        existingState ? unknownFields(existingState) : []
+      )
+    )
+  );
 };
 
 const getSanitizedInput = function(
@@ -541,7 +655,8 @@ const getFieldModificationData = function(
     isImmutable: !!fieldConfig.isImmutable,
     isInModifiedState: hasProperty(states.modified, safeId(fieldId)),
     rawValues: {},
-    deltaValues: undefined
+    deltaValues: undefined,
+    deltaData: undefined
   };
 
   if (states.existing) {
@@ -563,6 +678,14 @@ const getFieldModificationData = function(
       data.rawValues.sanitised = sanitisedValue;
       data.deltaValues.modifiedValue = sanitisedValue;
     }
+
+    data.deltaData = getFieldDeltaData(data);
+  } else {
+    data.deltaData = {
+      fieldId,
+      didChange: false,
+      delta: undefined
+    };
   }
 
   return data;
@@ -603,7 +726,8 @@ const getInvalidFields = function(
       deltaValues,
       isRequired,
       isImmutable,
-      isInModifiedState
+      isInModifiedState,
+      deltaData
     } = fieldModificationData;
     const { validator } = typeConfig;
 
@@ -622,21 +746,16 @@ const getInvalidFields = function(
       reason = ErrorMessage.RequiredFieldMissing;
     }
 
-    if (isValid && isImmutable && !baseParams.isCreate && isInModifiedState) {
+    if (isValid && deltaData.didChange && isImmutable && !baseParams.isCreate) {
       // immutable field has been found inside the modified state of an update
       // operation - check if the value has actually been changed
-      const { delta } = discernFieldDeltaOutcome(fieldModificationData, {
-        deltaCheck: true
-      });
-      if (!isUndefined(delta)) {
-        isValid = false;
-        reason = ErrorMessage.ImmutableFieldChanged;
-      }
+      isValid = false;
+      reason = ErrorMessage.ImmutableFieldChanged;
     }
 
     // The remaining checks will only run if the field
     // has been modified
-    if (isInModifiedState && isValid && validator) {
+    if (isValid && deltaData.didChange && validator) {
       const validatorParams: ValidatorParams = {
         ...baseParams,
         modifiedValue
@@ -705,7 +824,7 @@ const filterFMDListByMatchConfig = function(
   fieldModificationList: FieldModificationData[]
 ): FieldModificationData[] {
   let matchedFieldModificationList: FieldModificationData[];
-  const getFieldModificationData = (fieldId: FieldId): FieldModificationData =>
+  const findFMDForField = (fieldId: FieldId): FieldModificationData =>
     fieldModificationList.find(fMD => fMD.fieldId === fieldId);
 
   if (Array.isArray(fieldMatch)) {
@@ -713,14 +832,14 @@ const filterFMDListByMatchConfig = function(
     fieldMatch.forEach(f => {
       if (Array.isArray(f)) {
         f.forEach(fieldId =>
-          matchedFieldModificationList.push(getFieldModificationData(fieldId))
+          matchedFieldModificationList.push(findFMDForField(fieldId))
         );
       } else {
-        matchedFieldModificationList.push(getFieldModificationData(f));
+        matchedFieldModificationList.push(findFMDForField(f));
       }
     });
   } else {
-    matchedFieldModificationList = [getFieldModificationData(fieldMatch)];
+    matchedFieldModificationList = [findFMDForField(fieldMatch)];
   }
   return matchedFieldModificationList;
 };
@@ -737,11 +856,8 @@ const filterFMDListByMatchConfig = function(
 const conditionallyGroupFDOList = (
   fieldDeltaOutcomeList: FieldDeltaOutcome[],
   fieldMatch: FieldMatch
-) => {
-  const grouped = { every: [], some: [] } as {
-    every: FieldDeltaOutcome[];
-    some: Array<FieldDeltaOutcome[]>;
-  };
+): GroupedFDOList => {
+  const grouped = { every: [], some: [] };
   const getFDOForField = (fieldId: FieldId) =>
     fieldDeltaOutcomeList.find(fDO => fDO.fieldId === fieldId);
 
@@ -886,6 +1002,22 @@ const matchIntentConfigByOperationType = function(
   } else {
     return true;
   }
+};
+
+const filterMatchedIntentsByPolicy = function(
+  intentFieldDataList: IntentFieldData[]
+): IntentFieldData[] {
+  return intentFieldDataList.length === 1
+    ? intentFieldDataList
+    : intentFieldDataList.some(
+        iFD => iFD.intentConfig.externalPolicy === ExternalPolicy.Exclusive
+      )
+    ? [
+        intentFieldDataList.find(
+          iFD => iFD.intentConfig.externalPolicy === ExternalPolicy.Exclusive
+        )
+      ]
+    : intentFieldDataList;
 };
 
 export { getIntentions };
