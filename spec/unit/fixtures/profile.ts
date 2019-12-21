@@ -329,6 +329,26 @@ export const fixture: TestFixture = {
         modifiedState: {
           badges: [{ icon: 'star', label: 'Premium' }]
         }
+      },
+      {
+        description: 'add items to a previously non-existent array'
+      }
+    ],
+    [
+      ['AddBadges'],
+      {
+        existingState: {
+          name: 'Scooby Doo',
+          age: 10,
+          email: 'scooby.doo@mysteries.cnn',
+          badges: [{ icon: 'star', label: 'Premium' }]
+        },
+        modifiedState: {
+          badges: [{ icon: 'star', label: 'Premium' }, { icon: 'bird', label: 'Boy scout' }]
+        }
+      },
+      {
+        description: 'add new items to an already present array'
       }
     ],
     [

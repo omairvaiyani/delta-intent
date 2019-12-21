@@ -14,7 +14,8 @@ import {
   DeltaCheckConfig,
   ValueMatch,
   ValueMatchPresence,
-  GroupedFDOList
+  GroupedFDOList,
+  ManualMatcherParams
 } from '../interfaces/match-config-types';
 import { FieldConfig } from '../interfaces/field-config-types';
 import {
@@ -48,8 +49,7 @@ import {
   DefaultInvalidValueMessage,
   ValidatorParams,
   ValidatorOutcome,
-  Validator,
-  ValidatorBaseParams
+  Validator
 } from '../interfaces/validator-types';
 import {
   IntentConfig,
@@ -58,6 +58,8 @@ import {
   InternalPolicy
 } from '../interfaces/intent-config-types';
 import { ErrorMessage, ErrorCode } from './errors';
+import { BaseInputPipeParams } from '../interfaces/input-pipe-types';
+import { SanitiserParams } from '../interfaces/sanitiser-types';
 
 const getIntentions = function(
   modelConfiguration: ModelConfiguration,
@@ -114,15 +116,7 @@ const getIntentions = function(
       })
     );
 
-    const sanitisedState: ModelState | null = getSanitizedInput(
-      fieldWithTypeConfigList
-        .filter(map => map.typeConfig.sanitiser)
-        .filter(map => isFieldModified(modifiedState, map.fieldConfig)),
-      modifiedState,
-      existingState
-    );
-
-    const validatorBaseParams: ValidatorBaseParams = {
+    const baseInputPipeParams: BaseInputPipeParams = {
       modifiedState,
       existingState,
       postState: {
@@ -135,8 +129,24 @@ const getIntentions = function(
       }
     };
 
+    const sanitisedState: ModelState | null = getSanitizedInput(
+      fieldWithTypeConfigList
+        .filter(map => map.typeConfig.sanitiser)
+        .filter(map => isFieldModified(modifiedState, map.fieldConfig)),
+      baseInputPipeParams
+    );
+
+    if (sanitisedState) {
+      // merge sanitised values with modified before
+      // validation of the fields
+      Object.keys(sanitisedState).forEach(key => {
+        baseInputPipeParams.modifiedState[key] = sanitisedState[key];
+      });
+    }
+
     const fieldModificationList = fieldConfigList.map(fieldConfig =>
       getFieldModificationData(
+        baseInputPipeParams,
         fieldConfig,
         fieldWithTypeConfigList.find(
           map => map.fieldConfig.fieldId === fieldConfig.fieldId
@@ -152,10 +162,7 @@ const getIntentions = function(
     if (options.skipValidation) {
       verbose('opted to skip validation');
     } else {
-      const invalidFields = getInvalidFields(
-        validatorBaseParams,
-        fieldModificationList
-      );
+      const invalidFields = getInvalidFields(fieldModificationList);
       if (invalidFields.length) {
         return {
           error: getFailedResponse(
@@ -511,9 +518,9 @@ const discernFieldDeltaOutcome = function(
   const {
     fieldConfig,
     isInModifiedState,
-    isArray,
     deltaValues,
-    deltaData
+    deltaData,
+    inputPipeParams
   } = fieldModificationData;
   const { deltaCheck, existingState, modifiedState } = deltaMatch;
 
@@ -524,12 +531,14 @@ const discernFieldDeltaOutcome = function(
       existingState
         ? doesValueMatchExpected(
             existingState,
-            isInModifiedState ? deltaValues.existingValue : undefined
+            isInModifiedState ? deltaValues.existingValue : undefined,
+            inputPipeParams
           )
         : true,
       doesValueMatchExpected(
         modifiedState,
-        isInModifiedState ? deltaValues.modifiedValue : undefined
+        isInModifiedState ? deltaValues.modifiedValue : undefined,
+        inputPipeParams
       )
     ];
     didMatch = existingStateMatches && modifiedStateMatches;
@@ -608,8 +617,7 @@ const getUnknownFieldsFromInput = (
 
 const getSanitizedInput = function(
   fieldWithTypeConfigList: FieldWithTypeConfigMap[],
-  modifiedState: ModelState,
-  existingState: ModelState
+  baseInputPipeParams: BaseInputPipeParams
 ): ModelState | null {
   const sanitizedState: ModelState = {};
   let didSanitiseAny: boolean;
@@ -617,13 +625,15 @@ const getSanitizedInput = function(
     const { fieldId } = fieldConfig;
     const { sanitiser } = typeConfig;
     if (sanitiser) {
-      const deltaValues: DeltaValues = {
-        modifiedValue: modifiedState[fieldId]
+      const sanitiserParams: SanitiserParams = {
+        ...baseInputPipeParams,
+        modifiedValue: baseInputPipeParams.modifiedState[fieldId]
       };
-      if (existingState) {
-        deltaValues.existingValue = existingState[fieldId];
+      if (baseInputPipeParams.existingState) {
+        sanitiserParams.existingValue =
+          baseInputPipeParams.existingState[fieldId];
       }
-      const { didSanitise, sanitisedValue } = sanitiser(deltaValues);
+      const { didSanitise, sanitisedValue } = sanitiser(sanitiserParams);
       if (didSanitise) {
         sanitizedState[fieldConfig.fieldId] = sanitisedValue;
         didSanitiseAny = true;
@@ -634,6 +644,7 @@ const getSanitizedInput = function(
 };
 
 const getFieldModificationData = function(
+  baseInputPipeParams: BaseInputPipeParams,
   fieldConfig: FieldConfig,
   typeConfig: BaseTypeConfig,
   states: {
@@ -653,7 +664,12 @@ const getFieldModificationData = function(
     isInModifiedState: hasProperty(states.modified, safeId(fieldId)),
     rawValues: {},
     deltaValues: undefined,
-    deltaData: undefined
+    deltaData: undefined,
+
+    inputPipeParams: {
+      ...baseInputPipeParams,
+      modifiedValue: undefined
+    }
   };
 
   if (states.existing) {
@@ -671,6 +687,7 @@ const getFieldModificationData = function(
     const sanitisedValue = states.sanitised
       ? states.sanitised[fieldId]
       : undefined;
+
     if (typeof sanitisedValue !== 'undefined') {
       data.rawValues.sanitised = sanitisedValue;
       data.deltaValues.modifiedValue = sanitisedValue;
@@ -688,11 +705,17 @@ const getFieldModificationData = function(
     };
   }
 
+  // add field vlaues to inputPipeParams
+  if (states.existing) {
+    data.inputPipeParams.existingValue = data.rawValues.existing;
+  }
+  if (data.isInModifiedState) {
+    data.inputPipeParams.modifiedValue = data.deltaValues.modifiedValue;
+  }
   return data;
 };
 
 const getInvalidFields = function(
-  baseParams: ValidatorBaseParams,
   fieldModificationList: FieldModificationData[]
 ): InvalidFieldValue[] {
   const invalidFields: InvalidFieldValue[] = [];
@@ -727,7 +750,8 @@ const getInvalidFields = function(
       isRequired,
       isImmutable,
       isInModifiedState,
-      deltaData
+      deltaData,
+      inputPipeParams
     } = fieldModificationData;
     const { validator } = typeConfig;
 
@@ -741,12 +765,17 @@ const getInvalidFields = function(
 
     // the following two checks (isRequired and isImmutable) will run on
     // all fields, even if they're not in the modified state
-    if (isRequired && baseParams.isCreate && !isInModifiedState) {
+    if (isRequired && inputPipeParams.isCreate && !isInModifiedState) {
       isValid = false;
       reason = ErrorMessage.RequiredFieldMissing;
     }
 
-    if (isValid && deltaData.didChange && isImmutable && !baseParams.isCreate) {
+    if (
+      isValid &&
+      deltaData.didChange &&
+      isImmutable &&
+      !inputPipeParams.isCreate
+    ) {
       // immutable field has been found inside the modified state of an update
       // operation - check if the value has actually been changed
       isValid = false;
@@ -756,12 +785,8 @@ const getInvalidFields = function(
     // The remaining checks will only run if the field
     // has been modified
     if (isValid && deltaData.didChange && validator) {
-      const validatorParams: ValidatorParams = {
-        ...baseParams,
-        modifiedValue
-      };
       if (!isUndefined(deltaValues.existingValue)) {
-        validatorParams.existingValue = deltaValues.existingValue;
+        inputPipeParams.existingValue = deltaValues.existingValue;
       }
       if (isArray) {
         if (isNullOrUndefined(modifiedValue) && isRequired) {
@@ -771,7 +796,7 @@ const getInvalidFields = function(
             const invalidItems = modifiedValue
               .map(modifiedValue =>
                 runValidators(validator, {
-                  ...validatorParams,
+                  ...inputPipeParams,
                   modifiedValue
                 })
               )
@@ -799,7 +824,7 @@ const getInvalidFields = function(
           isValid = false;
           reason = ErrorMessage.RequiredFieldMissing;
         } else {
-          const outcomes = runValidators(validator, validatorParams);
+          const outcomes = runValidators(validator, inputPipeParams);
           if (didFailValidation(outcomes)) {
             const reasons = getReasonFromOutcomes(outcomes);
             isValid = false;
@@ -963,13 +988,14 @@ const generateArrayDelta = function(
 
 const doesValueMatchExpected = function(
   valueMatch: ValueMatch,
-  value: InputValue
+  value: InputValue,
+  matcherParams: ManualMatcherParams
 ): boolean {
   let match: boolean;
   if (hasProperty(valueMatch, 'value')) {
     match = valueMatch.value === value;
-  } else if (hasProperty(valueMatch, 'validate')) {
-    match = valueMatch.manual({ modifiedValue: value });
+  } else if (hasProperty(valueMatch, 'manual')) {
+    match = valueMatch.manual(matcherParams);
   } else if (hasProperty(valueMatch, 'presence')) {
     match = {
       [ValueMatchPresence.Forbidden]: value === undefined,
@@ -1021,3 +1047,6 @@ const filterMatchedIntentsByPolicy = function(
 };
 
 export { getIntentions };
+
+// exported for test-suite
+export { getFieldDeltaData };

@@ -19,6 +19,7 @@ import { FieldConfig } from './field-config-types';
 import { DeltaValues, Diff, DeltaData } from './delta-types';
 import { InvalidFieldValue } from './error-types';
 import { IntentConfig } from './intent-config-types';
+import { InputPipeParams } from './input-pipe-types';
 
 const GetIntentionsInput_S = Joi.object({
   modifiedState: ModelState_S.required(),
@@ -68,7 +69,7 @@ interface GetIntentionsError {
   info?: Record<string, any>;
 }
 
-interface FieldModificationData {
+interface FieldModificationData<T extends InputValue = InputValue> {
   fieldId: FieldId;
   fieldConfig: FieldConfig;
   typeConfig: BaseTypeConfig;
@@ -82,6 +83,7 @@ interface FieldModificationData {
     existing?: any;
   };
   deltaData: FieldDeltaData;
+  inputPipeParams: InputPipeParams<T>;
   // only present if modified
   deltaValues?: DeltaValues;
 }

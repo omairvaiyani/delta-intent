@@ -4,6 +4,7 @@ import { DeltaValues, Diff } from './delta-types';
 import { DifferOptions } from '../utils/diff';
 import { enumValues } from '../utils/common';
 import { FieldDeltaData } from './get-intentions-types';
+import { InputPipeParams } from './input-pipe-types';
 
 const FieldMatch_S = Joi.alternatives().try(
   FieldId_S,
@@ -29,10 +30,13 @@ type DeltaChecker<T extends InputValue = InputValue> = (
   options?: { differOptions?: DifferOptions }
 ) => Diff;
 
+interface ManualMatcherParams<T extends InputValue = InputValue>
+  extends InputPipeParams<T> {}
+
 const ManualMatcher_S = Joi.func().arity(1);
 
 type ManualMatcher<T extends InputValue = InputValue> = (
-  values: DeltaValues<T>
+  params: ManualMatcherParams<T>
 ) => boolean;
 
 enum ValueMatchPresence {
@@ -156,5 +160,6 @@ export {
   DeltaCheck,
   FieldDeltaOutcome,
   GroupedFDOList,
-  ManualMatcher
+  ManualMatcher,
+  ManualMatcherParams
 };

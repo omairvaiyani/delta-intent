@@ -2,11 +2,11 @@ import { Validator } from '../interfaces/validator-types';
 import { Sanitiser } from '../interfaces/sanitiser-types';
 import { ObjectHasher } from '../interfaces/hasher-types';
 import { FieldConfig } from '../interfaces/field-config-types';
-import { TypeId, FieldId } from '../interfaces/base-types';
+import { TypeId, FieldId, InputValue } from '../interfaces/base-types';
 import { DeltaIntentError } from '../utils/validator';
 import { ErrorCode, ErrorMessage } from '../core/errors';
 
-export class FieldApi {
+export class FieldApi<T extends InputValue = InputValue> {
   private _fieldId: FieldId;
   private _typeId?: TypeId;
   private _required?: boolean;
@@ -24,7 +24,7 @@ export class FieldApi {
     return this._fieldId;
   }
 
-  public type(typeId: TypeId): FieldApi {
+  public type(typeId: TypeId): this {
     if (this._typeId) {
       throw new DeltaIntentError(
         ErrorCode.InvalidArgument,
@@ -39,22 +39,22 @@ export class FieldApi {
     return this;
   }
 
-  public required(): FieldApi {
+  public required(): this {
     this._required = true;
     return this;
   }
 
-  public immutable(): FieldApi {
+  public immutable(): this {
     this._immutable = true;
     return this;
   }
 
-  public array(): FieldApi {
+  public array(): this {
     this._array = true;
     return this;
   }
 
-  public validator(validator: Validator): FieldApi {
+  public validator(validator: Validator<T>): this {
     if (!this._validators) {
       this._validators = [];
     }
@@ -62,7 +62,7 @@ export class FieldApi {
     return this;
   }
 
-  public sanitiser(sanitiser: Sanitiser): FieldApi {
+  public sanitiser(sanitiser: Sanitiser<T>): this {
     if (this._sanitiser) {
       throw new Error('You cannot set more than one sanitiser per Field');
     }
@@ -70,7 +70,7 @@ export class FieldApi {
     return this;
   }
 
-  public hasher(hasher: ObjectHasher): FieldApi {
+  public hasher(hasher: ObjectHasher<T>): this {
     if (this._hasher) {
       throw new Error('You cannot set more than one hasher per Field');
     }

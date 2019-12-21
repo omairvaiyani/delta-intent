@@ -9,7 +9,6 @@ import { TypeApi } from './type';
 import { FieldApi } from './field';
 import { IntentApi } from './intent';
 import {
-  ValueMatchPresence,
   FieldMatch,
   ManualMatcher as _ManualMatcher
 } from '../interfaces/match-config-types';
@@ -31,9 +30,9 @@ import { GetIntentionsResponse as _GetIntentionsResponse } from '../interfaces/g
 namespace Di {
   export const model = (modelId: ModelId) => new ModelApi(modelId);
   export const type = (typeId: TypeId) => new TypeApi(typeId);
-  export const field = (fieldId: FieldId) => new FieldApi(fieldId);
+  export const field = <T>(fieldId: FieldId) => new FieldApi<T>(fieldId);
   export const intent = (intentId: IntentId) => new IntentApi(intentId);
-  export const match = <T extends InputValue>(fieldId?: FieldId | FieldMatch) =>
+  export const match = <T>(fieldId?: FieldId | FieldMatch) =>
     new MatchApi<T>(fieldId);
 
   export const Match = _Match;

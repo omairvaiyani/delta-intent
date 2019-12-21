@@ -1,4 +1,4 @@
-const hasProperty = function(obj: any, key: string): boolean {
+const hasProperty = function<T>(obj: T, key: keyof T): boolean {
   return Object.hasOwnProperty.call(obj, key);
 };
 

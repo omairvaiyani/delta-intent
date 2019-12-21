@@ -1,6 +1,4 @@
-import Joi from '@hapi/joi';
 import { expect } from 'chai';
-import { getFieldConfig, getIntentConfig, getTypeConfig } from '../helpers';
 import { profile, purchaseOrder, accidentClaim } from './fixtures';
 import { TypeConfigStore } from '../../src/core/type-config-store';
 import { safeId } from '../../src/utils/common';
