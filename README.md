@@ -288,25 +288,30 @@ This is the primary run-time method which should be called when a create or upda
 
 For a `create` operation where no `existingState` is available:
 ```typescript
-const UserConfiguration = Di.model('User').fields(...).intentions(...);
+const UserConfiguration = Di.model('User')
+  .fields(...)
+  .intentions(...);
 
 const createUser = function(data) {
-	const outcome = UserConfiguration.getIntentions({
-		modifiedState: data
-	});
-}
+  const outcome = UserConfiguration.getIntentions({
+    modifiedState: data
+  });
+};
+
 ```
 
 For an `update` operation where you have an `existingState`:
 ```typescript
-const UserConfiguration = Di.model('User').fields(...).intentions(...);
+const UserConfiguration = Di.model('User')
+  .fields(...)
+  .intentions(...);
 
 const updateUser = function(user, data) {
-	const outcome = UserConfiguration.getIntentions({
-	    existingState: user,
-		modifiedState: data
-	});
-}
+  const outcome = UserConfiguration.getIntentions({
+    existingState: user,
+    modifiedState: data
+  });
+};
 ```
 
 How to use the `outcome` object:
@@ -371,15 +376,15 @@ Di.field('foo').sanitiser(input => {
 #### Validation
 
 ```typescript
-Di.field('foo').validator((input) => {
-	const { modifiedValue, existingValue } = input;
-	if(modifiedValue === 'baz' && existingValue === 'bar') {
-		// this change is valid
-		return true;
-	} else {
-		// return a message if invalid
-		return 'foo cannot be "baz" after being "bar"'
-	}
+Di.field('foo').validator(input => {
+  const { modifiedValue, existingValue } = input;
+  if (modifiedValue === 'baz' && existingValue === 'bar') {
+    // this change is valid
+    return true;
+  } else {
+    // return a message if invalid
+    return 'foo cannot be "baz" after being "bar"';
+  }
 });
 ```
 
