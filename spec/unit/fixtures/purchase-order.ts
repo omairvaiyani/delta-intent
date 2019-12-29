@@ -1,5 +1,7 @@
 import { TestFixture } from './interface';
-import { ErrorCode } from '../../../src/interfaces/error-types';
+import { ValueMatchPresence } from '../../../src/interfaces/match-config-types';
+import { Operation } from '../../../src/interfaces/intent-config-types';
+import { ErrorCode, ErrorMessage } from '../../../src/core/errors';
 
 export const fixture: TestFixture = {
   typeConfigList: [
@@ -67,19 +69,34 @@ export const fixture: TestFixture = {
               ? true
               : 'unknown status'
         ]
+      },
+      {
+        fieldId: 'refund',
+        validator: params => {
+          const { context, modifiedValue, existingState } = params;
+          if (modifiedValue) {
+            if (context.role !== 'admin') {
+              return `${context.role} role is not permitted to perform this action`;
+            }
+            return (
+              existingState.status === 'completed' ||
+              'you cannot refund an incomplete order'
+            );
+          }
+        }
       }
     ],
     intentConfigList: [
       {
         intentId: 'CreateOrder',
-        isCreate: true,
+        operation: Operation.Create,
         matchConfig: {
           items: [
             {
               fieldMatch: ['productId', 'email', 'card'],
               deltaMatch: {
                 modifiedState: {
-                  presence: 'required'
+                  presence: ValueMatchPresence.Required
                 }
               }
             },
@@ -96,7 +113,7 @@ export const fixture: TestFixture = {
       },
       {
         intentId: 'CompleteOrder',
-        isCreate: false,
+        operation: Operation.Update,
         matchConfig: {
           items: [
             {
@@ -115,7 +132,7 @@ export const fixture: TestFixture = {
       },
       {
         intentId: 'CancelOrder',
-        isCreate: false,
+        operation: Operation.Update,
         matchConfig: {
           items: [
             {
@@ -126,6 +143,22 @@ export const fixture: TestFixture = {
                 },
                 modifiedState: {
                   value: 'canceled'
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        intentId: 'RefundOrder',
+        operation: Operation.Update,
+        matchConfig: {
+          items: [
+            {
+              fieldMatch: 'refund',
+              deltaMatch: {
+                modifiedState: {
+                  value: true
                 }
               }
             }
@@ -276,6 +309,38 @@ export const fixture: TestFixture = {
               fieldId: 'status',
               value: 'completed',
               reason: 'new orders must have status pending'
+            }
+          ]
+        }
+      }
+    ],
+    [
+      [],
+      {
+        modifiedState: {
+          refund: true
+        },
+        existingState: {
+          productId: 'SomeWidget',
+          email: 'shopper.mcgee@domain.com',
+          card: '0000-0000-0000',
+          status: 'completed'
+        },
+        context: {
+          role: 'buyer'
+        }
+      },
+      {
+        description: 'context is available to validator',
+        error: {
+          modelId: null,
+          code: ErrorCode.InvalidModifiedState,
+          message: ErrorMessage.InvalidModifiedState,
+          invalidFields: [
+            {
+              fieldId: 'refund',
+              value: true,
+              reason: 'buyer role is not permitted to perform this action'
             }
           ]
         }

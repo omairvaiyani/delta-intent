@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { TypeConfigStore } from '../../src/api/type-config-store';
+import { TypeConfigStore } from '../../src/core/type-config-store';
 
 describe('TypeConfigStore', function() {
   it('throws if input typeConfigList is invalid', () => {

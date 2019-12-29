@@ -5,13 +5,17 @@ import { TypeConfig } from '../interfaces/custom-types';
 import { TypeId } from '../interfaces/base-types';
 
 export class TypeApi {
-  private typeId: TypeId;
+  private _typeId: TypeId;
   private _validators?: Validator[];
   private _sanitiser?: Sanitiser;
   private _hasher?: ObjectHasher;
 
   constructor(typeId: TypeId) {
-    this.typeId = typeId;
+    this._typeId = typeId;
+  }
+
+  public get typeId() {
+    return this._typeId;
   }
 
   public validator(validator: Validator): TypeApi {
@@ -21,6 +25,7 @@ export class TypeApi {
     this._validators.push(validator);
     return this;
   }
+
   public sanitiser(sanitiser: Sanitiser): TypeApi {
     if (this._sanitiser) {
       throw new Error('You cannot set more than one sanitiser per Type');
@@ -29,7 +34,7 @@ export class TypeApi {
     return this;
   }
   public hasher(hasher: ObjectHasher): TypeApi {
-    if (this.hasher) {
+    if (this._hasher) {
       throw new Error('You cannot set more than one hasher per Type');
     }
     this._hasher = hasher;
@@ -38,7 +43,7 @@ export class TypeApi {
 
   public toConfig(): TypeConfig {
     const typeConfig: TypeConfig = {
-      typeId: this.typeId
+      typeId: this._typeId
     };
     const { _validators, _sanitiser, _hasher } = this;
     if (_validators) {

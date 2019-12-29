@@ -1,13 +1,16 @@
 import Joi from '@hapi/joi';
-import { DeltaValues } from './delta-types';
+import { InputValue } from './base-types';
+import { InputPipeParams } from './input-pipe-types';
 
 const Validator_S = Joi.func().arity(1);
 
-interface ValidatorParams extends DeltaValues {
-  isCreate: boolean;
-}
+interface ValidatorParams<T extends InputValue = InputValue>
+  extends InputPipeParams<T> {}
+
 type ValidatorOutcome = boolean | string;
-type Validator = (params: ValidatorParams) => ValidatorOutcome;
+type Validator<T extends InputValue = InputValue> = (
+  params: ValidatorParams<T>
+) => ValidatorOutcome;
 
 const DefaultInvalidValueMessage = 'did not pass validation';
 

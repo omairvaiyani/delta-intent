@@ -1,12 +1,13 @@
 import Joi from '@hapi/joi';
-import { ErrorCode, IDeltaError } from '../interfaces/error-types';
+import { IDeltaError } from '../interfaces/error-types';
+import { ErrorCode } from '../core/errors';
 
 class DeltaIntentError extends Error implements IDeltaError {
-  public code: ErrorCode;
+  public code: string;
   public info?: any;
   public modelId?: string;
 
-  constructor(code: ErrorCode, message: string, info?: any) {
+  constructor(code: string, message: string, info?: any) {
     super(message);
 
     this.code = code;

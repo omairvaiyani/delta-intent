@@ -1,8 +1,9 @@
-import 'joi-extract-type';
-
 import { FieldId, IntentId, TypeId } from '../../src/interfaces/base-types';
 import { FieldConfig } from '../../src/interfaces/field-config-types';
-import { IntentConfig } from '../../src/interfaces/intent-config-types';
+import {
+  IntentConfig,
+  Operation
+} from '../../src/interfaces/intent-config-types';
 import { TypeConfig } from '../../src/interfaces/custom-types';
 
 const getFieldConfig = (fieldId?: FieldId): FieldConfig => ({
@@ -13,7 +14,7 @@ const getIntentConfig = (
   fieldIds?: Array<FieldId | FieldId[]>
 ): IntentConfig => ({
   intentId: intentId || '1',
-  isCreate: true,
+  operation: Operation.Create,
   matchConfig: {
     items: fieldIds
       ? fieldIds.map(fieldId => ({

@@ -17,7 +17,8 @@ const _BaseTypeConfig_S = {
     )
     .optional(),
   objectHasher: ObjectHasher_S.optional(),
-  isRequired: Joi.boolean().optional()
+  isRequired: Joi.boolean().optional(),
+  isImmutable: Joi.boolean().optional()
 };
 const BaseTypeConfig_S = Joi.object(_BaseTypeConfig_S);
 interface BaseTypeConfig {
@@ -26,6 +27,7 @@ interface BaseTypeConfig {
   validator?: Validator | Validator[];
   objectHasher?: ObjectHasher;
   isRequired?: boolean;
+  isImmutable?: boolean;
 }
 
 const TypeConfig_S = Joi.object({

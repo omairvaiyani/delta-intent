@@ -1,13 +1,7 @@
 import { FieldId, InputValue } from './base-types';
 
-enum ErrorCode {
-  InvalidConfiguration = 'InvalidConfiguration',
-  InvalidModifiedState = 'InvalidModifiedState',
-  UnknownError = 'UnknownError'
-}
-
 interface IDeltaError {
-  code: ErrorCode;
+  code: string;
   message: string;
   info?: any;
 }
@@ -18,4 +12,4 @@ interface InvalidFieldValue {
   reason: string | string[];
 }
 
-export { ErrorCode, IDeltaError, InvalidFieldValue };
+export { IDeltaError, InvalidFieldValue };

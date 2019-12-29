@@ -1,6 +1,8 @@
 import { TestFixture } from './interface';
-import { ErrorCode } from '../../../src/interfaces/error-types';
 import { DefaultInvalidValueMessage } from '../../../src/interfaces/validator-types';
+import { ValueMatchPresence } from '../../../src/interfaces/match-config-types';
+import { Operation } from '../../../src/interfaces/intent-config-types';
+import { ErrorCode, ErrorMessage } from '../../../src/core/errors';
 
 export const fixture: TestFixture = {
   typeConfigList: [
@@ -73,14 +75,14 @@ export const fixture: TestFixture = {
     intentConfigList: [
       {
         intentId: 'Register',
-        isCreate: true,
+        operation: Operation.Create,
         matchConfig: {
           items: [
             {
               fieldMatch: ['name', 'age', 'email'],
               deltaMatch: {
                 modifiedState: {
-                  presence: 'required'
+                  presence: ValueMatchPresence.Required
                 }
               }
             },
@@ -88,7 +90,7 @@ export const fixture: TestFixture = {
               fieldMatch: 'profilePicture',
               deltaMatch: {
                 modifiedState: {
-                  presence: 'optional'
+                  presence: ValueMatchPresence.Optional
                 }
               }
             },
@@ -96,7 +98,7 @@ export const fixture: TestFixture = {
               fieldMatch: 'badges',
               deltaMatch: {
                 modifiedState: {
-                  presence: 'forbidden'
+                  presence: ValueMatchPresence.Forbidden
                 }
               }
             }
@@ -105,7 +107,7 @@ export const fixture: TestFixture = {
       },
       {
         intentId: 'UpdateBio',
-        isCreate: false,
+        operation: Operation.Update,
         matchConfig: {
           items: [
             {
@@ -119,7 +121,7 @@ export const fixture: TestFixture = {
       },
       {
         intentId: 'UpdateEmail',
-        isCreate: false,
+        operation: Operation.Update,
         matchConfig: {
           items: [
             {
@@ -133,7 +135,7 @@ export const fixture: TestFixture = {
       },
       {
         intentId: 'AddBadges',
-        isCreate: false,
+        operation: Operation.Update,
         matchConfig: {
           items: [
             {
@@ -151,7 +153,7 @@ export const fixture: TestFixture = {
       },
       {
         intentId: 'RemoveBadges',
-        isCreate: false,
+        operation: Operation.Update,
         matchConfig: {
           items: [
             {
@@ -176,8 +178,7 @@ export const fixture: TestFixture = {
         modifiedState: {
           name: 'Scooby Doo',
           age: 10,
-          email: 'scooby.doo@mysteries.cnn',
-          foO: 'baz'
+          email: 'scooby.doo@mysteries.cnn'
         }
       }
     ],
@@ -194,6 +195,87 @@ export const fixture: TestFixture = {
               label: 'premium'
             }
           ]
+        }
+      },
+      {
+        error: {
+          modelId: null,
+          code: ErrorCode.InvalidModifiedState,
+          message: ErrorMessage.UninterpretedIntention
+        }
+      }
+    ],
+    [
+      [],
+      {
+        modifiedState: {
+          name: 'Scooby Doo',
+          age: 10,
+          email: 'scooby.doo@mysteries.cnn',
+          foo: 'bar'
+        }
+      },
+      {
+        description: 'error if modified state has unknown field',
+        error: {
+          modelId: null,
+          code: ErrorCode.InvalidModifiedState,
+          message: ErrorMessage.UnknownFieldInState,
+          info: {
+            unknownFields: ['foo']
+          }
+        }
+      }
+    ],
+    [
+      [],
+      {
+        modifiedState: {
+          name: 'Wilma'
+        },
+        existingState: {
+          name: 'Scooby Doo',
+          age: 10,
+          email: 'scooby.doo@mysteries.cnn',
+          foo: 'bar',
+          baz: 'rah'
+        }
+      },
+      {
+        description: 'error if existing state has unknown fields',
+        error: {
+          modelId: null,
+          code: ErrorCode.InvalidModifiedState,
+          message: ErrorMessage.UnknownFieldInState,
+          info: {
+            unknownFields: ['foo', 'baz']
+          }
+        }
+      }
+    ],
+    [
+      [],
+      {
+        modifiedState: {
+          name: 'Wilma',
+          foo: 'bar'
+        },
+        existingState: {
+          name: 'Scooby Doo',
+          age: 10,
+          email: 'scooby.doo@mysteries.cnn',
+          foo: 'bar'
+        }
+      },
+      {
+        description: 'error if both states have the same unknown field',
+        error: {
+          modelId: null,
+          code: ErrorCode.InvalidModifiedState,
+          message: ErrorMessage.UnknownFieldInState,
+          info: {
+            unknownFields: ['foo']
+          }
         }
       }
     ],
@@ -247,6 +329,26 @@ export const fixture: TestFixture = {
         modifiedState: {
           badges: [{ icon: 'star', label: 'Premium' }]
         }
+      },
+      {
+        description: 'add items to a previously non-existent array'
+      }
+    ],
+    [
+      ['AddBadges'],
+      {
+        existingState: {
+          name: 'Scooby Doo',
+          age: 10,
+          email: 'scooby.doo@mysteries.cnn',
+          badges: [{ icon: 'star', label: 'Premium' }]
+        },
+        modifiedState: {
+          badges: [{ icon: 'star', label: 'Premium' }, { icon: 'bird', label: 'Boy scout' }]
+        }
+      },
+      {
+        description: 'add new items to an already present array'
       }
     ],
     [
@@ -283,6 +385,14 @@ export const fixture: TestFixture = {
             { icon: 'star', label: 'Premium' },
             { icon: 'bolt', label: 'Power' }
           ]
+        }
+      },
+      {
+        error: {
+          modelId: null,
+          code: ErrorCode.InvalidModifiedState,
+          message: ErrorMessage.UninterpretedIntention,
+          info: null
         }
       }
     ],

@@ -1,5 +1,5 @@
 import { performDiffCheck, DifferOptions } from './diff';
-import { DeltaValues, Delta } from '../interfaces/delta-types';
+import { DeltaValues, Diff } from '../interfaces/delta-types';
 import { DeltaChecker } from '../interfaces/match-config-types';
 /**
  * Wraps the custom `deltaChecker` and validates
@@ -12,9 +12,9 @@ import { DeltaChecker } from '../interfaces/match-config-types';
 const performCustomDeltaCheck = (
   deltaValues: DeltaValues,
   deltaChecker: DeltaChecker
-): Delta => {
-  const delta: any = deltaChecker(deltaValues);
-  if ([null, false, 0, NaN].includes(delta)) {
+): Diff => {
+  const delta: Diff = deltaChecker(deltaValues);
+  if ([null, false, 0, NaN].includes(delta as any)) {
     throw new Error(
       `Your custom delta checker returned an unsupported falsy value: ${delta}. Return undefined for an unchanged delta.`
     );

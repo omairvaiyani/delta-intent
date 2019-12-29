@@ -1,17 +1,17 @@
 import Joi from '@hapi/joi';
 
 const InputValue_S = Joi.any();
-const ModelId_S = Joi.alternatives().try([
+const ModelId_S = Joi.alternatives().try(
   Joi.string().min(1),
   Joi.number(),
   Joi.symbol()
-]);
-const IntentId_S = Joi.alternatives().try([
+);
+const IntentId_S = Joi.alternatives().try(
   Joi.string().min(1),
   Joi.number(),
   Joi.symbol()
-]);
-const FieldId_S = Joi.alternatives().try([Joi.string().min(1), Joi.number()]);
+);
+const FieldId_S = Joi.alternatives().try(Joi.string().min(1), Joi.number());
 const TypeId_S = Joi.string().min(1);
 const ModelState_S = Joi.object().pattern(FieldId_S, InputValue_S);
 const DefaultValueType_S = Joi.string().valid(
@@ -24,11 +24,11 @@ const DefaultValueType_S = Joi.string().valid(
   'symbol'
 );
 
-type InputValue = Joi.extractType<typeof InputValue_S>;
+type InputValue = any;
 type ModelId = string | number | symbol;
 type IntentId = string | number | symbol;
 type FieldId = string | number;
-type TypeId = Joi.extractType<typeof TypeId_S>;
+type TypeId = string;
 type ModelState = Record<FieldId, InputValue>;
 
 enum DefaultValueType {

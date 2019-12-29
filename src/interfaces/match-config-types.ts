@@ -1,33 +1,43 @@
 import Joi from '@hapi/joi';
 import { FieldId, InputValue, FieldId_S, InputValue_S } from './base-types';
-import { Validator, Validator_S } from './validator-types';
-import { DeltaValues, Delta, Delta_S } from './delta-types';
+import { DeltaValues, Diff } from './delta-types';
 import { DifferOptions } from '../utils/diff';
 import { enumValues } from '../utils/common';
+import { FieldDeltaData } from './get-intentions-types';
+import { InputPipeParams } from './input-pipe-types';
 
-const FieldMatch_S = Joi.alternatives().try([
+const FieldMatch_S = Joi.alternatives().try(
   FieldId_S,
   Joi.array()
     .items(
-      Joi.alternatives().try([
+      Joi.alternatives().try(
         FieldId_S,
         Joi.array()
           .items(FieldId_S)
           .min(1)
-      ])
+      )
     )
     .min(1)
-]);
+);
 type FieldMatch = FieldId | Array<FieldId | FieldId[]>;
 
 const DeltaChecker_S = Joi.func()
   .minArity(1)
   .maxArity(2);
 
-type DeltaChecker = (
-  deltaValues: DeltaValues,
+type DeltaChecker<T extends InputValue = InputValue> = (
+  deltaValues: DeltaValues<T>,
   options?: { differOptions?: DifferOptions }
-) => Delta;
+) => Diff;
+
+interface ManualMatcherParams<T extends InputValue = InputValue>
+  extends InputPipeParams<T> {}
+
+const ManualMatcher_S = Joi.func().arity(1);
+
+type ManualMatcher<T extends InputValue = InputValue> = (
+  params: ManualMatcherParams<T>
+) => boolean;
 
 enum ValueMatchPresence {
   Optional = 'optional',
@@ -40,25 +50,24 @@ const ValueMatch_S = Joi.object({
     .valid(enumValues(ValueMatchPresence))
     .optional(),
   value: InputValue_S.optional(),
-  manual: Validator_S.optional()
+  manual: ManualMatcher_S.optional()
 });
-
-interface ValueMatch extends Joi.extractType<typeof ValueMatch_S> {
+interface ValueMatch {
   presence?: ValueMatchPresence;
   value?: InputValue;
-  manual?: (values: DeltaValues) => boolean;
+  manual?: ManualMatcher;
 }
 
 const DeltaCheckConfig_S = Joi.object({
   arrayChanges: Joi.object({
     added: Joi.alternatives()
-      .try([Joi.boolean(), Joi.number()])
+      .try(Joi.boolean(), Joi.number())
       .optional(),
     removed: Joi.alternatives()
-      .try([Joi.boolean(), Joi.number()])
+      .try(Joi.boolean(), Joi.number())
       .optional(),
     moved: Joi.alternatives()
-      .try([Joi.boolean(), Joi.number()])
+      .try(Joi.boolean(), Joi.number())
       .optional()
   })
 });
@@ -70,11 +79,11 @@ interface DeltaCheckConfig {
   };
 }
 
-const DeltaCheck_S = Joi.alternatives().try([
+const DeltaCheck_S = Joi.alternatives().try(
   Joi.boolean(),
   DeltaCheckConfig_S,
   DeltaChecker_S
-]);
+);
 
 type DeltaCheck = boolean | DeltaCheckConfig | DeltaChecker;
 
@@ -108,39 +117,25 @@ interface MatchConfig {
   items: MatchConfigItem[];
 }
 
-const ArrayDeltaItem_S = Joi.alternatives([
-  Joi.string(),
-  Joi.array().items(Joi.any(), Joi.number()),
-  Joi.array().items(Joi.any(), Joi.number(), Joi.number())
-]);
-const ArrayDelta_S = Joi.object({
-  added: Joi.array()
-    .items(ArrayDeltaItem_S)
-    .required(),
-  removed: Joi.array()
-    .items(ArrayDeltaItem_S)
-    .required(),
-  moved: Joi.array()
-    .items(ArrayDeltaItem_S)
-    .required()
-});
-interface ArrayDelta {
-  added: Array<[any, number] | string>;
-  removed: Array<[any, number] | string>;
-  moved: Array<[any, number, number]>;
-}
-
 const FieldDeltaOutcome_S = Joi.object({
   fieldId: FieldId_S.required(),
   didMatch: Joi.boolean().required(),
-  delta: Delta_S.optional(),
-  arrayDelta: ArrayDelta_S.optional()
+  deltaData: Joi.object({
+    fieldId: Joi.string().required(),
+    didChange: Joi.boolean().required(),
+    delta: Joi.any(),
+    arrayDelta: Joi.any()
+  })
 });
 interface FieldDeltaOutcome {
   fieldId: FieldId;
   didMatch: boolean;
-  delta?: Delta;
-  arrayDelta?: ArrayDelta;
+  deltaData: FieldDeltaData;
+}
+
+interface GroupedFDOList {
+  every: FieldDeltaOutcome[];
+  some: Array<FieldDeltaOutcome[]>;
 }
 
 export {
@@ -150,8 +145,8 @@ export {
   DeltaMatch_S,
   MatchConfigItem_S,
   MatchConfig_S,
-  ArrayDelta_S,
-  FieldDeltaOutcome_S
+  FieldDeltaOutcome_S,
+  ManualMatcher_S
 };
 export {
   FieldMatch,
@@ -163,6 +158,8 @@ export {
   DeltaCheckConfig,
   DeltaChecker,
   DeltaCheck,
-  ArrayDelta,
-  FieldDeltaOutcome
+  FieldDeltaOutcome,
+  GroupedFDOList,
+  ManualMatcher,
+  ManualMatcherParams
 };
