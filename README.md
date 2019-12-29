@@ -4,9 +4,9 @@ A strongly-typed framework and mental-model for APIs to assure a given change (_
 
 ## Why
 
-If the job of a back-end layer can be described in one line, it is to enforce business policies on all incoming and outgoing data. Enforcing these policies is tough and consists of many individual, and often co-mingled tasks: data sanitisation, validation, determining the changes, handling any side-effects, and finally, persisting the changes.  Of these tasks, what's often under-looked is the act of determining the changes received to create or update a record. This can sometimes be as simple as changing a user's name, but is often much more complex and requires very specific changes across a number of fields to fall into a certain expected state.
+If the job of a back-end layer can be described in one line, it is to enforce business policies on all incoming and outgoing data. Enforcing these policies is tough and consists of many individual, and often co-mingled tasks: data sanitisation, validation, determining the changes, handling any side-effects, and finally, persisting the changes. Of these tasks, what's often under-looked is the act of determining the changes received to create or update a record. This can sometimes be as simple as changing a user's name, but is often much more complex and requires very specific changes across a number of fields to fall into a certain expected state.
 
-Many developers opt for the [`RPC`]([https://www.geeksforgeeks.org/remote-procedure-call-rpc-in-operating-system/) pattern to group complex changes into pre-defined available actions. If your entire back-end is constructed this way - I suggest you give delta-intent a pass. If however, you have a mixture of simple `CrUd` operations mixed with `RPC`s, or have noticed the struggles of maintaining complex actions in any of your domain models - at the very least, you will find some useful insights from this library.
+Many developers opt for the [RPC]([https://www.geeksforgeeks.org/remote-procedure-call-rpc-in-operating-system/) pattern to group complex changes into pre-defined available actions. If your entire back-end is constructed this way - I suggest you give delta-intent a pass. If however, you have a mixture of simple `CrUd` operations and RPCs, or have noticed the struggles of maintaining complex actions in any of your domain models - at the very least, you will find some useful insights from this library.
 
 ## Quick jump
 
@@ -47,59 +47,63 @@ View the following snippet as a pseudo-code overview of how delta-intent should 
 
 ```typescript
 // the file in which your handle create/update operations for your model(s)
-import { Di } from 'delta-intent' 
+import { Di } from 'delta-intent';
 import { ProfileConfig } from 'path-to-your-model-config';
 
 export const handleProfileSave = function(profile, changes) {
-	const { isIntent } = ProfileConfig.getIntentions({
-		existingState: profile,
-		modifiedState: changes
-	});
-	
-	if(isIntent('register')) {
-		// run your registration logic
-	}
-	if(isIntent('updateEmail')) {
-		// run your update email logic
-	}
-	if(isIntent('upgrade')) {
-		// run your upgrade logic
+  const { isIntent } = ProfileConfig.getIntentions({
+    existingState: profile,
+    modifiedState: changes
+  });
+
+  if (isIntent('register')) {
+    // run your registration logic
   }
-  if(isIntent('updateBasicInfo')) {
-		// run your upgrade logic
-	}
+  if (isIntent('updateEmail')) {
+    // run your update email logic
+  }
+  if (isIntent('upgrade')) {
+    // run your upgrade logic
+  }
+  if (isIntent('updateBasicInfo')) {
+    // run your update basic info logic
+  }
 };
 
 // path-to-your-model-config.ts
 export const ProfileConfig = Di.model('Profile')
-	.types([
-		Di.type('Email').validator(emailValidatorFunc)
-	])
-    .fields([
-		Di.field('name').required(),
-		Di.field('email').type('Email').immutable(),
-		Di.field('bio'),
-		Di.field('isPremiumUser')
-	])
-	.intentions([
-		Di.intent('register').create().match([
-			Di.match('name').present(),
-			Di.match('email').present(),
-			Di.match('bio')
-			.present(Di.Match.Presence.Optional),
-			Di.match('isPremiumUser').present(false)
-		]),
-		Di.intent('upgrade').update().match([
-			Di.match('isPremiumUser').is(true).from(false)
-		]),
-		Di.intent('changeEmail').update().match([
-			Di.match('email').changed()
-		]),
-		Di.intent('updateBasicInfo').update().match([
-			Di.match(['name', 'bio']).changed()
-		])
-	]);
-
+  .types([Di.type('Email').validator(emailValidatorFunc)])
+  .fields([
+    Di.field('name').required(),
+    Di.field('email')
+      .type('Email')
+      .immutable(),
+    Di.field('bio'),
+    Di.field('isPremiumUser')
+  ])
+  .intentions([
+    Di.intent('register')
+      .create()
+      .match([
+        Di.match('name').present(),
+        Di.match('email').present(),
+        Di.match('bio').present(Di.Match.Presence.Optional),
+        Di.match('isPremiumUser').present(false)
+      ]),
+    Di.intent('upgrade')
+      .update()
+      .match([
+        Di.match('isPremiumUser')
+          .is(true)
+          .from(false)
+      ]),
+    Di.intent('changeEmail')
+      .update()
+      .match([Di.match('email').changed()]),
+    Di.intent('updateBasicInfo')
+      .update()
+      .match([Di.match(['name', 'bio']).changed()])
+  ]);
 ```
 
 ### Guide
@@ -109,10 +113,10 @@ The basic premise of delta-intent is to define _what_ changes can be made to a p
 #### Preamble
 Pretty much all applications have a _model_ to describe and store _domain_ objects. This _model_ is likely described in your database _schema_ as having a number of _fields_ of certain _types_. Depending on your database, the schema can provide an excellent layer of protection for data integrity. But the schema alone is rarely sufficient; complex business concerns where input must be validated against existing data, across multiple collections within the same database, or against external states across other data sources necessitates an _application_ layer to sit between your data, and your data _consumer_.  
 
-This application layer is more commonly known as the _back-end_, which, in the javascript world is usually built on an express server on node.js. Here, developers can expose routes as endpoints to receive create and update requests for each of their _domain_ models. This layer is where business concerns that are too complex to enforce by schema alone take home. It is here where delta-intent enters the scene.
+This application layer is more commonly known as the _back-end_, which, in the javascript world is usually built on an express server on node.js. Here, developers can expose routes as endpoints to receive create and update requests for each of their _domain_ models. This layer is where business concerns that are too complex to enforce by schema alone take home. It is here where delta-intent can be utilised.
 
 #### Model
-You must define one `Di.model` for your domain model. This is also your entry point into delta-intent's API. 
+Define a `Di.model` for your domain model. This is also your entry point into delta-intent's API. 
 
 For the domain model `User`:
 ```typescript
@@ -191,28 +195,29 @@ Di.field('name').hasher(someHasherFunc)
 There are many occasions where two or more fields, even across multiple domain models, require the input sanitisation or validation. To avoid breaking the DRY principle, define a `Di.type` and make it available to the `Di.model`:
 
 ```typescript
-Di.model('user').types([
-	Di.type('Email').validator(emailValidatorFun)
-]).fields([
-	Di.field('email').type('Email'),
-	Di.field('backupEmail').type('Email'),
-	Di.field('name').validator(nameValidatorFunc),
-]);
+Di.model('user')
+  .types([Di.type('Email').validator(emailValidatorFun)])
+  .fields([
+    Di.field('email').type('Email'),
+    Di.field('backupEmail').type('Email'),
+    Di.field('name').validator(nameValidatorFunc)
+  ]);
+
 ```
 
 To re-use a type across multiple models, simple store the `Di.type` in a central location:
 
 ```typescript
-const EMAIL_TYPE = 'Email'
+const EMAIL_TYPE = 'Email';
 const emailType = Di.type(EMAIL_TYPE).validator(emailValidatorFun);
 
-Di.model('user').types([emailType]).fields([
-	Di.field('email').type(EMAIL_TYPE)
-]);
+Di.model('user')
+  .types([emailType])
+  .fields([Di.field('email').type(EMAIL_TYPE)]);
 
-Di.model('card').types([emailType]).fields([
-	Di.field('billingEmail').type(EMAIL_TYPE)
-]);
+Di.model('card')
+  .types([emailType])
+  .fields([Di.field('billingEmail').type(EMAIL_TYPE)]);
 ```
 
 #### Intent
@@ -233,38 +238,44 @@ Before we begin adding the above-mentioned items to the `User` model _intents_, 
 Each of your potential changes (_intents_) have to be described using the `Di.match` API. This matching occurs when a change is requested and `Di.model#getIntentions` is invoked with the modifications, therefore, it is those modifications that must _match_ for the _intent_ to be ascertained:
 
 ```typescript
-Di.model('user').types(...types).fields(...fields).intentions([
-	Di.intent('registerByEmail')
-		.create()
-		.match([
-			// 'name' is present
-			Di.match('name').present(),
-			// 'email' is present
-			Di.match('email').present(),
-			// 'bio' can be present
-			Di.match('bio').present(Di.Match.Presence.Optional),
-			// 'facebookToken' should not be present
-			Di.match('facebookToken').present(false)
-	]),
-	Di.intent('registerByFacebook')
-		.create()
-		.match([
-			// 'name' is present
-			Di.match('name').present(),
-			// 'facebookToken' is present
-			Di.match('facebookToken').present(),
-			// 'bio' can be present
-			Di.match('bio').present(Di.Match.Presence.Optional),
-			// 'email' should not be present
-			Di.match('email').present(false)
-	]),
-	Di.intent('verifyEmail')
-		.update()
-		.match([
-			// 'isEmailVerified' has now been set to true
-			Di.match('isEmailVerified').is(true).from(false)
-	])
-])
+Di.model('user')
+  .types(...types)
+  .fields(...fields)
+  .intentions([
+    Di.intent('registerByEmail')
+      .create()
+      .match([
+        // 'name' is present
+        Di.match('name').present(),
+        // 'email' is present
+        Di.match('email').present(),
+        // 'bio' can be present
+        Di.match('bio').present(Di.Match.Presence.Optional),
+        // 'facebookToken' should not be present
+        Di.match('facebookToken').present(false)
+      ]),
+    Di.intent('registerByFacebook')
+      .create()
+      .match([
+        // 'name' is present
+        Di.match('name').present(),
+        // 'facebookToken' is present
+        Di.match('facebookToken').present(),
+        // 'bio' can be present
+        Di.match('bio').present(Di.Match.Presence.Optional),
+        // 'email' should not be present
+        Di.match('email').present(false)
+      ]),
+    Di.intent('verifyEmail')
+      .update()
+      .match([
+        // 'isEmailVerified' has now been set to true
+        Di.match('isEmailVerified')
+          .is(true)
+          .from(false)
+      ])
+  ]);
+
 ```
 
 ##### State
@@ -301,32 +312,32 @@ const updateUser = function(user, data) {
 How to use the `outcome` object:
 ```typescript
 enum Intent {
-   RegisterByEmail = 'registerByEmail',
-   RegisterByFacebook = 'registerByFacebook',
-   ChangeEmail = 'changeEmail'
+  RegisterByEmail = 'registerByEmail',
+  RegisterByFacebook = 'registerByFacebook',
+  ChangeEmail = 'changeEmail'
 }
 const UserConfiguration = Di.model('User').fields(...).intentions([
-	Di.intent(Intent.RegisterByEmail).create().match(...)
-	Di.intent(Intent.RegisterByFacebook).create().match(...),
-	Di.intent(Intent.ChangeEmail).update().match(...)
+ Di.intent(Intent.RegisterByEmail).create().match(...)
+ Di.intent(Intent.RegisterByFacebook).create().match(...),
+ Di.intent(Intent.ChangeEmail).update().match(...)
 ]);
 const updateUser = function(user, data) {
-	const { error, intentIds, isIntent } = UserConfiguration.getIntentions({
-	    existingState: user,
-		modifiedState: data
-	});
-	if(error) {
-		// View the Error handling section to learn more 
-		throw Error(error.message);
-	}
+ const { error, intentIds, isIntent } = UserConfiguration.getIntentions({
+     existingState: user,
+   modifiedState: data
+ });
+ if(error) {
+   // View the Error handling section to learn more 
+   throw Error(error.message);
+ }
 
-	// this will print all the matched `intentIds`
-	console.log(intentIds);
-    
-    // use this convenience method to maintain a readable codebase
-    if(isIntent(Intent.ChangeEmail)) {
-		// for example: send a verification email to the new address
-	}
+ // this will print all the matched `intentIds`
+ console.log(intentIds);
+   
+   // use this convenience method to maintain a readable codebase
+   if(isIntent(Intent.ChangeEmail)) {
+   // for example: send a verification email to the new address
+ }
 }
 ```
 
@@ -335,25 +346,26 @@ const updateUser = function(user, data) {
 
 #### Sanitisation
 ```typescript
-Di.field('foo').sanitise((input) => {
-	const { modifiedValue, existingValue } = input;
-	if(typeof modifiedValue === 'string') {
-		const sanitisedValue = modifiedValue.trim();
-		return {
-			didSanitise: true,
-			sanitisedValue
-		}
-	} else if (typeof modifiedValue !== 'undefined') {
-		return {
-			didSanitise: true,
-			sanitisedValue: undefined
-		}
-	} else {
-		return {
-			didSanitise: false
-		}
-	}
+Di.field('foo').sanitise(input => {
+  const { modifiedValue, existingValue } = input;
+  if (typeof modifiedValue === 'string') {
+    const sanitisedValue = modifiedValue.trim();
+    return {
+      didSanitise: true,
+      sanitisedValue
+    };
+  } else if (typeof modifiedValue !== 'undefined') {
+    return {
+      didSanitise: true,
+      sanitisedValue: undefined
+    };
+  } else {
+    return {
+      didSanitise: false
+    };
+  }
 });
+
 ```
 
 #### Validation
