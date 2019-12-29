@@ -346,7 +346,7 @@ const updateUser = function(user, data) {
 
 #### Sanitisation
 ```typescript
-Di.field('foo').sanitise(input => {
+Di.field('foo').sanitiser(input => {
   const { modifiedValue, existingValue } = input;
   if (typeof modifiedValue === 'string') {
     const sanitisedValue = modifiedValue.trim();
@@ -371,7 +371,7 @@ Di.field('foo').sanitise(input => {
 #### Validation
 
 ```typescript
-Di.field('foo').validate((input) => {
+Di.field('foo').validator((input) => {
 	const { modifiedValue, existingValue } = input;
 	if(modifiedValue === 'baz' && existingValue === 'bar') {
 		// this change is valid
@@ -385,12 +385,12 @@ Di.field('foo').validate((input) => {
 
 Validate a field by checking the state of another:
 ```typescript
-Di.field('bio').validate((input) => {
-	const { modifiedValue, postState } = input;
-	if(modifiedValue && !postState['isEmailVerified']) {
-		return 'you cannot set a bio until you have verified your email';
-	}
-	return true;
+Di.field('bio').validator(input => {
+  const { modifiedValue, postState } = input;
+  if (modifiedValue && !postState['isEmailVerified']) {
+    return 'you cannot set a bio until you have verified your email';
+  }
+  return true;
 });
 ```
 
