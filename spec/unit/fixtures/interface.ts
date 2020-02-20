@@ -1,6 +1,6 @@
 import { TypeConfig } from '../../../src/interfaces/custom-types';
 import { ModelConfiguration } from '../../../src/core/model-configuration';
-import { IntentId } from '../../../src/interfaces/base-types';
+import { IntentId, ModelState } from '../../../src/interfaces/base-types';
 import {
   GetIntentionsInput,
   GetIntentionsError
@@ -16,7 +16,11 @@ type BaseTestFixtureScenario = [IntentId[], GetIntentionsInput];
 type ExtendedTestFixtureScenario = [
   IntentId[],
   GetIntentionsInput,
-  { description?: string; error?: GetIntentionsError }
+  {
+    description?: string;
+    error?: GetIntentionsError;
+    sanitisations?: ModelState;
+  }
 ];
 type FixtureScenario = BaseTestFixtureScenario | ExtendedTestFixtureScenario;
 

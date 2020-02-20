@@ -438,7 +438,10 @@ export const fixture: TestFixture = {
         }
       },
       {
-        description: 'sanitised field should be unmodifed'
+        description: 'sanitised field should be unmodifed',
+        sanitisations: {
+          email: 'scooby.doo@mysteries.cnn'
+        }
       }
     ]
   ]

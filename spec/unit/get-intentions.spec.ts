@@ -99,6 +99,8 @@ describe('getIntentions', function() {
             expect(response.intentIds.sort()).to.deep.equal(
               expectedIntentIds.sort()
             );
+
+            expect(response.sanitisations).to.deep.equal(extra.sanitisations);
           }
         });
       });

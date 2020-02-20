@@ -136,7 +136,7 @@ const getIntentions = function(
       baseInputPipeParams
     );
 
-    if (sanitisedState) {
+    if (sanitisedState !== null) {
       // merge sanitised values with modified before
       // validation of the fields
       Object.keys(sanitisedState).forEach(key => {
@@ -338,6 +338,10 @@ const getIntentions = function(
         return fieldModificationData.deltaData;
       }
     };
+
+    if (sanitisedState !== null) {
+      response.sanitisations = sanitisedState;
+    }
 
     if (existingState) {
       response.fieldDeltaOutcomeList = fieldDeltaOutcomeList;
