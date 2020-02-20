@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.9](https://github.com/omairvaiyani/delta-intent/compare/v0.0.8...v0.0.9) (2020-02-20)
+
+
+### Bug Fixes
+
+* return sanitisations when present ([ca02557](https://github.com/omairvaiyani/delta-intent/commit/ca02557b4c2b4e23a1d75c1e7fe4e2f43de78b27))
+* **docs:** fix typos ([62ae6a6](https://github.com/omairvaiyani/delta-intent/commit/62ae6a66e19a80446787b02f481fd00bd6cf6eb7))
+
 ### [0.0.8](https://github.com/omairvaiyani/delta-intent/compare/v0.0.7...v0.0.8) (2019-12-28)
 
 
