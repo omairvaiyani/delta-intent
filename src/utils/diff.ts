@@ -4,7 +4,7 @@ import { DeltaChecker } from '../interfaces/match-config-types';
 import { ObjectHasher } from '../interfaces/hasher-types';
 import { InputValue } from '../interfaces/base-types';
 
-interface DiffPatcherConfig extends Config {}
+type DiffPatcherConfig = Config
 
 const getDiffer = (deltaValues: DeltaValues, options: DifferOptions) => {
   const diffOptions: DiffPatcherConfig = {};

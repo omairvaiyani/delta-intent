@@ -11,6 +11,9 @@ import { IntentApi } from './intent';
 import {
   FieldMatch,
   ManualMatcher as _ManualMatcher
+,
+  DeltaChecker as _DeltaChecker,
+  FieldDeltaOutcome as _FieldDeltaOutcome
 } from '../interfaces/match-config-types';
 import { MatchApi, Match as _Match } from './match';
 import { ModelApi } from './model';
@@ -19,10 +22,7 @@ import { IntentConfig as _IntentConfig } from '../interfaces/intent-config-types
 import { TypeConfig as _TypeConfig } from '../interfaces/custom-types';
 import { Validator as _Validator } from '../interfaces/validator-types';
 import { Sanitiser as _Sanitiser } from '../interfaces/sanitiser-types';
-import {
-  DeltaChecker as _DeltaChecker,
-  FieldDeltaOutcome as _FieldDeltaOutcome
-} from '../interfaces/match-config-types';
+
 import { ErrorCode as _ErrorCode } from '../core/errors';
 import { ObjectHasher as _ObjectHasher } from '../interfaces/hasher-types';
 import { GetIntentionsResponse as _GetIntentionsResponse } from '../interfaces/get-intentions-types';
@@ -45,9 +45,9 @@ namespace Di {
     export type DeltaChecker = _DeltaChecker;
     export type Hasher = _ObjectHasher;
     export type Matcher<T extends InputValue = InputValue> = _ManualMatcher<T>;
-    export interface GetIntentionsResponse extends _GetIntentionsResponse {}
-    export interface FieldDeltaOutcome extends _FieldDeltaOutcome {}
-    export interface Model extends ModelApi {}
+    export type GetIntentionsResponse = _GetIntentionsResponse
+    export type FieldDeltaOutcome = _FieldDeltaOutcome
+    export type Model = ModelApi
   }
 }
 

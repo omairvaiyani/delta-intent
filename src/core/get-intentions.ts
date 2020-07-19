@@ -1,3 +1,4 @@
+import { isUndefined, isNullOrUndefined } from 'util';
 import { ModelConfiguration } from './model-configuration';
 import {
   ModelState,
@@ -44,7 +45,6 @@ import {
   MatchConfigItemData,
   FieldDeltaData
 } from '../interfaces/get-intentions-types';
-import { isUndefined, isNullOrUndefined } from 'util';
 import {
   DefaultInvalidValueMessage,
   ValidatorParams,
@@ -217,7 +217,7 @@ const getIntentions = function(
             `will not match due to strict policy and unacceptable fields found: ${unacceptableFieldIds}`
           );
           return false;
-        } else if (
+        } if (
           isInModifiedStateFieldIds.length < acceptableFieldIds.length
         ) {
           const optionalFieldIds = optionalFMDList.map(fMD => fMD.fieldId);
@@ -355,7 +355,7 @@ const getIntentions = function(
           info: e.info
         })
       };
-    } else {
+    } 
       return {
         error: getFailedResponse(
           modelIdSafe,
@@ -368,7 +368,7 @@ const getIntentions = function(
           }
         )
       };
-    }
+    
   }
 };
 
@@ -759,7 +759,7 @@ const getInvalidFields = function(
     } = fieldModificationData;
     const { validator } = typeConfig;
 
-    let isValid: boolean = true;
+    let isValid = true;
     let reason: string | string[];
 
     let modifiedValue: any;
@@ -795,8 +795,7 @@ const getInvalidFields = function(
       if (isArray) {
         if (isNullOrUndefined(modifiedValue) && isRequired) {
           isValid = false;
-        } else {
-          if (Array.isArray(modifiedValue)) {
+        } else if (Array.isArray(modifiedValue)) {
             const invalidItems = modifiedValue
               .map(modifiedValue =>
                 runValidators(validator, {
@@ -822,9 +821,7 @@ const getInvalidFields = function(
             isValid = false;
             reason = ErrorMessage.UnexpectedType('array', modifiedValue);
           }
-        }
-      } else {
-        if (isRequired && isNullOrUndefined(modifiedValue)) {
+      } else if (isRequired && isNullOrUndefined(modifiedValue)) {
           isValid = false;
           reason = ErrorMessage.RequiredFieldMissing;
         } else {
@@ -835,7 +832,6 @@ const getInvalidFields = function(
             reason = simplifyReasons(reasons);
           }
         }
-      }
     }
     if (!isValid) {
       invalidFields.push({ fieldId, value: modifiedValue, reason });
@@ -917,9 +913,9 @@ const getFieldTypeConfig = function(
     };
     delete baseTypeConfig.typeId;
     return baseTypeConfig;
-  } else {
+  } 
     return typeConfigForField;
-  }
+  
 };
 
 const isDeltaCheckConfig = function(
@@ -931,9 +927,9 @@ const isDeltaCheckConfig = function(
     typeof deltaCheck === 'function'
   ) {
     return false;
-  } else {
+  } 
     return true;
-  }
+  
 };
 
 const isDeltaForArray = function(deltaValues: DeltaValues): boolean {
@@ -1029,9 +1025,9 @@ const matchIntentConfigByOperationType = function(
         [Operation.Any]: isOperationCreate
       }[intentConfig.operation] === isOperationCreate
     );
-  } else {
+  } 
     return true;
-  }
+  
 };
 
 const filterMatchedIntentsByPolicy = function(

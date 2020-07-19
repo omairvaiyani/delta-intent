@@ -2,8 +2,7 @@ import Joi from '@hapi/joi';
 import { InputValue, InputValue_S } from './base-types';
 import { InputPipeParams } from './input-pipe-types';
 
-interface SanitiserParams<T extends InputValue = InputValue>
-  extends InputPipeParams<T> {}
+type SanitiserParams<T extends InputValue = InputValue> = InputPipeParams<T>
 
 const SanitiserOutcome_S = Joi.object({
   didSanitise: Joi.boolean().required(),

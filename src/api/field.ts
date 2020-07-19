@@ -8,12 +8,19 @@ import { ErrorCode, ErrorMessage } from '../core/errors';
 
 export class FieldApi<T extends InputValue = InputValue> {
   private _fieldId: FieldId;
+
   private _typeId?: TypeId;
+
   private _required?: boolean;
+
   private _immutable?: boolean;
+
   private _array?: boolean;
+
   private _validators?: Validator[];
+
   private _sanitiser?: Sanitiser;
+
   private _hasher?: ObjectHasher;
 
   constructor(fieldId: FieldId) {

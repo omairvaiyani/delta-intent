@@ -30,9 +30,9 @@ const defaultDeltaCheck: DeltaChecker = (
     return performDiffCheck(deltaValues, {
       differOptions: options.differOptions
     });
-  } else {
+  } 
     return undefined;
-  }
+  
 };
 
 export { defaultDeltaCheck, performCustomDeltaCheck };

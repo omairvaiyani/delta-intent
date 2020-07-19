@@ -12,7 +12,9 @@ import { safeId } from '../utils/common';
 
 class ModelConfiguration {
   public readonly modelId: ModelId;
+
   public readonly fieldConfigList: FieldConfig[];
+
   public readonly intentConfigList: IntentConfig[];
 
   constructor(input: ModelConfiguration.ConstructorParams) {

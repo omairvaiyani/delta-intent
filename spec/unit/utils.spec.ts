@@ -94,6 +94,7 @@ describe('utils', function() {
 
       class Car {
         id: string;
+
         colour: string;
       }
 
@@ -133,7 +134,9 @@ describe('utils', function() {
 
       class Person {
         id: string;
+
         name: string;
+
         title: string;
       }
 
