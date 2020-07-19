@@ -4,8 +4,7 @@ import { InputPipeParams } from './input-pipe-types';
 
 const Validator_S = Joi.func().arity(1);
 
-interface ValidatorParams<T extends InputValue = InputValue>
-  extends InputPipeParams<T> {}
+type ValidatorParams<T extends InputValue = InputValue> = InputPipeParams<T>
 
 type ValidatorOutcome = boolean | string;
 type Validator<T extends InputValue = InputValue> = (

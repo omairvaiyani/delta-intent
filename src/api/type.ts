@@ -6,8 +6,11 @@ import { TypeId } from '../interfaces/base-types';
 
 export class TypeApi {
   private _typeId: TypeId;
+
   private _validators?: Validator[];
+
   private _sanitiser?: Sanitiser;
+
   private _hasher?: ObjectHasher;
 
   constructor(typeId: TypeId) {
@@ -33,6 +36,7 @@ export class TypeApi {
     this._sanitiser = sanitiser;
     return this;
   }
+
   public hasher(hasher: ObjectHasher): TypeApi {
     if (this._hasher) {
       throw new Error('You cannot set more than one hasher per Type');

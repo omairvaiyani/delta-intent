@@ -11,9 +11,13 @@ import { IncompatibleConfigError } from './error';
 
 export class IntentApi {
   private _intentId: IntentId;
+
   private _operation = Operation.Any;
+
   private _externalPolicy: ExternalPolicy;
+
   private _internalPolicy: InternalPolicy;
+
   private _items: MatchConfigItem[];
 
   constructor(intentId: IntentId) {

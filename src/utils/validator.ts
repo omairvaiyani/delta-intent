@@ -4,7 +4,9 @@ import { ErrorCode } from '../core/errors';
 
 class DeltaIntentError extends Error implements IDeltaError {
   public code: string;
+
   public info?: any;
+
   public modelId?: string;
 
   constructor(code: string, message: string, info?: any) {

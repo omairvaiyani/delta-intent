@@ -14,8 +14,11 @@ interface DefinedMatchApi {
 
 class MatchApi<T extends InputValue = InputValue> {
   private fieldMatch: FieldMatch;
+
   private _existingState: ValueMatch;
+
   private _modifiedState: ValueMatch;
+
   private _deltaCheck: DeltaCheck;
 
   constructor(fieldId: FieldId | FieldMatch) {
@@ -93,6 +96,7 @@ class MatchApi<T extends InputValue = InputValue> {
     }
     return this._modifiedState;
   }
+
   private setupExistingStateMatch() {
     if (!this._existingState) {
       this._existingState = {};

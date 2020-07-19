@@ -14,13 +14,17 @@ import { ModelConfiguration } from '../core/model-configuration';
 
 export class ModelApi {
   private modelId: ModelId;
+
   private typeConfigList: TypeConfig[];
+
   private fieldConfigList: FieldConfig[];
+
   private intentConfigList: IntentConfig[];
 
   constructor(modelId: ModelId) {
     this.modelId = modelId;
   }
+
   public types(types: TypeApi[]) {
     if (this.typeConfigList) {
       throw new Error('You have already set the types, add them all at once');
@@ -28,6 +32,7 @@ export class ModelApi {
     this.typeConfigList = types.map(type => type.toConfig());
     return this;
   }
+
   public fields(fields: FieldApi[]) {
     if (this.fieldConfigList) {
       throw new Error('You have already set the fields, add them all at once');
@@ -35,6 +40,7 @@ export class ModelApi {
     this.fieldConfigList = fields.map(field => field.toConfig());
     return this;
   }
+
   public intentions(intentions: IntentApi[]) {
     if (this.intentConfigList) {
       throw new Error(

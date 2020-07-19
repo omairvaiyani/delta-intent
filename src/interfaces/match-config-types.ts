@@ -30,8 +30,7 @@ type DeltaChecker<T extends InputValue = InputValue> = (
   options?: { differOptions?: DifferOptions }
 ) => Diff;
 
-interface ManualMatcherParams<T extends InputValue = InputValue>
-  extends InputPipeParams<T> {}
+type ManualMatcherParams<T extends InputValue = InputValue> = InputPipeParams<T>
 
 const ManualMatcher_S = Joi.func().arity(1);
 
